@@ -116,7 +116,7 @@ const SOCIAL_LINKS = [
   { href: 'https://github.com/Jekx-geidi', label: 'GitHub', Icon: Github }
 ];
 
-// Desktop/laptop (lg+): full link row + socials. Phones/tablets: logo, Resume
+// Desktop/laptop (lg+): full link row + Resume. Phones/tablets: logo, Resume
 // and a burger that drops a menu panel in the current section's theme.
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -163,11 +163,6 @@ const Navbar = () => {
           ))}
         </div>
         <div className="flex items-center gap-2 md:gap-4 lg:gap-6">
-          <div className="hidden lg:flex gap-4 opacity-60 hover:opacity-100 transition-opacity">
-            {SOCIAL_LINKS.map(({ href, label, Icon }) => (
-              <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label} className="nav-link hover:text-jake hover:scale-110 transition-all"><Icon size={20} /></a>
-            ))}
-          </div>
           <a
             href="/RIEL JAKE_ENGANA _VERCEL RESUME_ Geidi.jpg"
             download
@@ -221,13 +216,6 @@ const Navbar = () => {
                   </motion.li>
                 ))}
               </ul>
-              <div className="flex gap-3 pt-4">
-                {SOCIAL_LINKS.map(({ href, label, Icon }) => (
-                  <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label} className="nav-link w-10 h-10 rounded-full border border-current/20 flex items-center justify-center transition-colors">
-                    <Icon size={18} />
-                  </a>
-                ))}
-              </div>
             </div>
           </motion.div>
         )}
@@ -361,7 +349,7 @@ const ProfileScroll = ({ onClose }: { onClose: () => void }) => {
       aria-labelledby="profile-scroll-title"
     >
       <motion.div
-        className="@container relative w-[min(92vw,580px,66vh)] aspect-[1086/1448]"
+        className="parchment @container relative flex w-[min(94vw,880px)] h-[min(90vh,1040px)] drop-shadow-[0_24px_40px_rgba(0,0,0,0.45)]"
         style={{ transformOrigin: 'center' }}
         initial={{ scaleY: 0.08, opacity: 0, rotate: -2 }}
         animate={{ scaleY: 1, opacity: 1, rotate: 0 }}
@@ -369,15 +357,13 @@ const ProfileScroll = ({ onClose }: { onClose: () => void }) => {
         transition={{ type: 'spring', stiffness: 140, damping: 18 }}
         onClick={(e) => e.stopPropagation()}
       >
-        <img src="/paper.webp" alt="" className="absolute inset-0 w-full h-full select-none drop-shadow-[0_24px_40px_rgba(0,0,0,0.45)]" draggable={false} />
-
-        <div className="absolute left-[14%] right-[13%] top-[17.5%] bottom-[18%] flex flex-col">
-          <h2 id="profile-scroll-title" className="handwriting text-[7cqw] leading-none -rotate-2 mb-[1.5cqw]">
+        <div className="relative flex-1 min-w-0 flex flex-col px-[2cqw] pt-[1cqw]">
+          <h2 id="profile-scroll-title" className="handwriting font-bold text-[clamp(26px,min(7cqw,5vh),54px)] leading-none -rotate-2 mb-[0.5em]">
             About me
           </h2>
           <div
             ref={textRef}
-            className="handwriting flex-1 min-h-0 overflow-y-auto no-scrollbar whitespace-pre-line text-[3.05cqw] leading-[1.22] -rotate-[0.6deg] pr-1"
+            className="handwriting flex-1 min-h-0 overflow-y-auto no-scrollbar whitespace-pre-line text-[clamp(15px,min(3.4cqw,2.45vh),24px)] leading-[1.32] -rotate-[0.3deg] pr-1"
             aria-live="off"
           >
             <span className="sr-only">{PROFILE_TEXT}</span>
@@ -393,7 +379,7 @@ const ProfileScroll = ({ onClose }: { onClose: () => void }) => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <span className="handwriting text-[6cqw] leading-none -rotate-3">— Jake</span>
+              <span className="handwriting font-bold text-[clamp(24px,min(6cqw,4.4vh),46px)] leading-none -rotate-3">— Jake</span>
               <svg viewBox="0 0 140 14" className="w-28 h-3 -mt-1" aria-hidden="true">
                 <motion.path
                   d="M2 9 C 30 2, 60 13, 90 6 S 130 4, 138 8"

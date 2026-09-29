@@ -19,6 +19,13 @@ export default defineConfig(({mode}) => {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
+      watch: {
+        // Loose images saved into the project root (source art, not served) crashed
+        // the dev server with EBUSY while Windows still had them locked mid-save.
+        ignored: (file: string) =>
+          path.resolve(path.dirname(file)) === path.resolve(__dirname) &&
+          /\.(png|jpe?g|webp|gif)$/i.test(file),
+      },
     },
   };
 });

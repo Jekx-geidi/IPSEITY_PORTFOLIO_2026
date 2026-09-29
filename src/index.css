@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&family=Caveat&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&family=Caveat:wght@400..700&display=swap');
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -189,8 +189,23 @@
 /* Handwriting on the "Read Profile" parchment: Caveat in slightly uneven dark ink. */
 .handwriting {
   font-family: var(--font-signature);
-  color: var(--color-jake-ink);
-  text-shadow: 0 0 0.6px rgb(43 26 10 / 0.55);
+  font-weight: 600;
+  color: #24160A;
+  text-shadow: 0 0 0.5px rgb(36 22 10 / 0.6);
+}
+
+/* The "Read Profile" parchment drawn with border-image: the rolled top/bottom and the
+   curled corners keep their shape (slices 250/225/240/225 px of paper.webp) while the
+   plain parchment in the middle stretches, so the scroll can be large at any size. */
+.parchment {
+  /* same scale on all four sides (keeps the curls' shape), sized by width AND height */
+  --pt: clamp(58px, min(10.5vw, 16vh), 150px);
+  --ps: clamp(52px, min(9.4vw, 14.3vh), 134px);
+  --pb: clamp(56px, min(10vw, 15.3vh), 144px);
+  border-style: solid;
+  border-color: transparent;
+  border-width: var(--pt) var(--ps) var(--pb) var(--ps);
+  border-image: url('/paper.webp') 250 225 240 225 fill stretch;
 }
 .pen-tip {
   display: inline-block;
