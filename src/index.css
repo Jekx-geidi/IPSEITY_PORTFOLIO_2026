@@ -2,16 +2,128 @@
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
+/* The Education section toggles .gunter while current; gunter: restyles its parts in Gunter's palette. */
+@custom-variant gunter (&:where(.gunter, .gunter *));
+
+@font-face {
+  font-family: "Adventure Time Logo";
+  src: url("/fonts/AdventureTimeLogo.ttf") format("truetype");
+  /* Letters + space only: the font maps digits and punctuation (0-9 / , . " ' ! ? & - : + ( ) % #)
+     to EMPTY glyphs, so they rendered blank. Limiting the range makes those fall back to Space Grotesk. */
+  unicode-range: U+0020, U+0041-005A, U+0061-007A;
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Space Grotesk", sans-serif;
+  --font-display: "Adventure Time Logo", "Space Grotesk", sans-serif;
   --font-signature: "Caveat", cursive;
   
-  --color-bg: #E9ECEF;
-  --color-ink: #111111;
-  --color-accent-start: #FF4A2A;
-  --color-accent-end: #FF6A3D;
+  /* Adventure Time palette. Ink isn't in the palette: none of the five is dark
+     enough for body text, so it's a deep navy taken from the palette blue. */
+  --color-bg: #FFFFFF;
+  --color-ink: #0B2E3F;
+  --color-accent-start: #029AC3; /* Blue */
+  --color-accent-end: #FE66CA;   /* Pink */
+  --color-secondary: #59A694;    /* Teal */
+  --color-highlight: #FFBA1E;    /* Yellow */
+  --color-tertiary: #CD93F9;     /* Lavender */
+  --color-title: #6B1A26;        /* Maroon — headings + primary buttons */
+  --color-jake-skin: #F8B400;    /* Jake's actual fur colour */
+  /* Jake palette, sampled from jake.png — hero */
+  --color-jake-fur: #F9BB00;
+  --color-jake-wood: #DE8234;      /* desk */
+  --color-jake-hoodie: #1F1F24;
+  --color-jake-cream: #FFF6DE;     /* hero background top */
+  --color-jake-ink: #2B1A0A;       /* cocoa — headline text */
+  --color-jake-book-red: #B5352E;  /* the books on his desk */
+  --color-jake-book-blue: #2E4C7C;
+  --color-jake-book-green: #285039;
+  --color-jake: #D39200;         /* Jake yellow, darkened from jake.png (#F8B400) — "AI" + nav hover */
+  --color-sky: #1D65A8;          /* Sky blue, darkened from the BG.webp sky — "Software" in the hero */
+
+  /* BMO palette, sampled from idk.png — Services section */
+  --color-bmo: #0AE6BE;          /* body */
+  --color-bmo-shade: #00AA96;    /* body shading / legs */
+  --color-bmo-screen: #FCFAD8;   /* screen */
+  --color-bmo-ink: #170414;      /* line-art outline */
+  --color-bmo-slot: #2F697D;     /* slot + small dark buttons */
+  --color-bmo-yellow: #FDE876;   /* D-pad */
+  --color-bmo-blue: #09E3F9;     /* triangle button */
+  --color-bmo-pink: #FC62A2;     /* big round button */
+
+  /* Finn palette, sampled from Finn.png — About section */
+  --color-finn-shirt: #009EDB;
+  --color-finn-shorts: #0164D3;
+  --color-finn-hat: #F6F6F6;
+  --color-finn-skin: #F4C8B4;
+  --color-finn-pack: #54A722;    /* backpack */
+  --color-finn-mouth: #FB999B;
+  --color-finn-ink: #111111;     /* line-art outline */
+
+  /* Marceline palette, sampled from marceline.png — Journey section */
+  --color-marcy-hair: #0E0C19;
+  --color-marcy-skin: #C3ECEE;
+  --color-marcy-sweater: #5F6672;
+  --color-marcy-red: #B70D1A;
+  --color-marcy-jeans: #262683;
+  --color-marcy-boots: #72152B;
+  --color-marcy-tie: #434DD5;    /* hair tie */
+
+  /* Princess Bubblegum palette, sampled from Princess Bubblegum.png — Portfolio section */
+  --color-pb-pink: #FD59BC;      /* hair + dress */
+  --color-pb-skin: #FDD3F3;
+  --color-pb-lilac: #E889F4;     /* boots */
+  --color-pb-gem: #8CD7FD;       /* crown gem */
+  --color-pb-crown: #F6B822;
+  --color-pb-magenta: #B0307F;   /* deep shade — readable text */
+  --color-pb-ink: #3A0F2E;       /* outline */
+
+  /* Gunter palette, sampled from penguin.png — Education section */
+  --color-gunter-navy: #14202E;       /* body */
+  --color-gunter-belly: #F2F0E2;      /* belly — section background */
+  --color-gunter-gown: #1F1E20;       /* graduation gown */
+  --color-gunter-gold: #FFBD2D;       /* gown trim, beak, tassel */
+  --color-gunter-gold-deep: #B07A00;  /* darker gold for text on cream */
+
+  /* Flame Princess palette, sampled from fire.png — Reviews section */
+  --color-fire-flame: #FC3801;   /* skin / main flame */
+  --color-fire-hair: #FD8303;    /* hair tips */
+  --color-fire-gold: #FFC02E;    /* flame highlight */
+  --color-fire-red: #CA031C;     /* dress trim */
+  --color-fire-ember: #1E0604;   /* charcoal ember — section base */
+  --color-fire-cream: #FFF1DC;   /* text on ember */
+
+  /* Lumpy Space Princess palette, sampled from baloyet.png — FAQ section */
+  --color-lsp-body: #BE98D7;     /* lavender body */
+  --color-lsp-star: #FDE15B;     /* star on her head */
+  --color-lsp-blush: #EAA8D8;
+  --color-lsp-mist: #F3EAFA;     /* pale lavender — section background */
+  --color-lsp-deep: #6B3F8F;     /* deep purple — readable text */
+  --color-lsp-ink: #1E1024;      /* outline */
+
+  /* Ice King palette, sampled from Ice King.png — Contact section */
+  --color-ik-robe: #1E28E6;      /* robe (softened from #0001F6) */
+  --color-ik-navy: #001060;      /* robe shadow — section base */
+  --color-ik-skin: #B8EEFB;      /* ice-blue skin */
+  --color-ik-beard: #FCFCFC;
+  --color-ik-crown: #F5DC0A;     /* gold crown */
+  --color-ik-gem: #D0103A;       /* crown gems */
+
+  /* Lady Rainicorn palette, sampled from rainbow.png — Tools section */
+  --color-rain-red: #F01848;
+  --color-rain-gold: #E8A820;    /* orange stripe (deepened so white icons read on it) */
+  --color-rain-mane: #F0D860;    /* yellow mane */
+  --color-rain-green: #30A848;
+  --color-rain-teal: #00A890;
+  --color-rain-blue: #1860F0;
+  --color-rain-purple: #7860F0;
+  --color-rain-pink: #F0A8F0;    /* body */
+  --color-rain-pink-deep: #D65DC8; /* body, deepened for icon tiles */
+  --color-rain-blush: #FDEBFB;   /* pale pink — section background */
+  --color-rain-ink: #1A1030;     /* outline */
 }
 
 @layer base {
@@ -39,6 +151,270 @@
 
 .gradient-text {
   @apply bg-linear-to-r from-accent-start to-accent-end bg-clip-text text-transparent;
+}
+
+/*
+ * Heading lettering: maroon blending down into near-black, with a soft dark
+ * edge. The gradient repeats every line (1lh) so multi-line headings get
+ * the full fade on each line instead of one fade across the block.
+ */
+.title-text {
+  color: var(--color-title);
+  background: linear-gradient(180deg, #8C2233 0%, #6B1A26 45%, #2A0A10 100%) 0 0 / 100% 1lh repeat-y;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 0 rgb(26 6 10 / 0.25));
+}
+
+/* Inside a dark section (class="dark", e.g. Services) the maroon would vanish, so flip to white → soft rose. */
+.dark .title-text {
+  color: #fff;
+  background-image: linear-gradient(180deg, #FFFFFF 0%, #F6E3E6 50%, #D9A3AB 100%);
+  filter: drop-shadow(0 2px 0 rgb(0 0 0 / 0.35));
+}
+
+/* text-fill-color is inherited, so an explicitly coloured child must opt back out. */
+.title-text .text-jake,
+.title-text .text-sky {
+  -webkit-text-fill-color: currentColor;
+}
+
+/* Fur-yellow "Software" on cream: a soft desk-orange offset shadow instead of an outline.
+   (filter, not text-shadow, so it also works with the headline's background-clip reveal) */
+.jake-shadow {
+  filter: drop-shadow(0.045em 0.05em 0 var(--color-jake-wood));
+}
+
+/* Handwriting on the "Read Profile" parchment: Caveat in slightly uneven dark ink. */
+.handwriting {
+  font-family: var(--font-signature);
+  color: var(--color-jake-ink);
+  text-shadow: 0 0 0.6px rgb(43 26 10 / 0.55);
+}
+.pen-tip {
+  display: inline-block;
+  width: 0.5em;
+  height: 0.5em;
+  margin-left: 2px;
+  border-radius: 50% 50% 50% 0;
+  background: var(--color-jake-ink);
+  transform: rotate(-45deg) translateY(-0.1em);
+  animation: pen-bob 0.5s ease-in-out infinite alternate;
+}
+@keyframes pen-bob { from { opacity: 1; } to { opacity: 0.35; } }
+
+/* Cartoon outline in BMO's line-art colour (pink on teal needs it to read). */
+.bmo-outline {
+  -webkit-text-stroke: 0.08em var(--color-bmo-ink);
+  paint-order: stroke fill;
+}
+
+/* Same cartoon outline in Finn's black line-art (hat-white text on shirt blue). */
+.finn-outline {
+  -webkit-text-stroke: 0.06em var(--color-finn-ink);
+  paint-order: stroke fill;
+}
+
+/* Cartoon outline in Bubblegum's plum line-art (pink on pale pink needs it to read). */
+.pb-outline {
+  -webkit-text-stroke: 0.06em var(--color-pb-ink);
+  paint-order: stroke fill;
+}
+
+/* Cartoon outline in LSP's line-art (star yellow on lavender needs it to read). */
+.lsp-outline {
+  -webkit-text-stroke: 0.06em var(--color-lsp-ink);
+  paint-order: stroke fill;
+}
+
+/* Same maroon-to-black as .title-text, as a surface (Download Resume, Enquire). */
+.title-bg {
+  background: linear-gradient(180deg, #8C2233 0%, #6B1A26 45%, #2A0A10 100%);
+}
+
+/*
+ * Glitch button — adapted from Uiverse.io by namecho ("slippery-moth-23", MIT).
+ * Recoloured to the site palette: face = --glitch-face, offset edge and glitch
+ * slivers = --glitch-edge, text-shadow ghosts in Jake gold + sky blue.
+ * The ::after layer repeats the label from data-text and is sliced into strips
+ * (clip-path) that jump around on hover.
+ */
+.glitch-btn,
+.glitch-btn::after {
+  --glitch-face: var(--color-title);
+  --glitch-edge: var(--color-sky);
+  padding: 16px 24px;
+  font-size: 18px;
+  font-weight: 700;
+  background: linear-gradient(45deg, transparent 5%, var(--glitch-face) 5%);
+  border: 0;
+  color: var(--glitch-text, #fff);
+  letter-spacing: 3px;
+  line-height: 1;
+  box-shadow: 6px 0 0 var(--glitch-edge);
+  outline: transparent;
+  position: relative;
+}
+
+.glitch-btn {
+  display: inline-block;
+  text-decoration: none;
+}
+
+.glitch-btn--alt,
+.glitch-btn--alt::after {
+  --glitch-face: var(--color-sky);
+  --glitch-edge: var(--color-title);
+}
+
+/* Jake hero variants: hoodie-black face / fur-yellow face */
+.glitch-btn--jake,
+.glitch-btn--jake::after {
+  --glitch-face: var(--color-jake-hoodie);
+  --glitch-edge: var(--color-jake-wood);
+  --glitch-text: var(--color-jake-fur);
+}
+.glitch-btn--jake-alt,
+.glitch-btn--jake-alt::after {
+  --glitch-face: var(--color-jake-fur);
+  --glitch-edge: var(--color-jake-hoodie);
+  --glitch-text: var(--color-jake-hoodie);
+}
+button.glitch-btn { cursor: pointer; font-family: inherit; }
+
+.glitch-btn::after {
+  --slice-0: inset(50% 50% 50% 50%);
+  --slice-1: inset(80% -6px 0 0);
+  --slice-2: inset(50% -6px 30% 0);
+  --slice-3: inset(10% -6px 85% 0);
+  --slice-4: inset(40% -6px 43% 0);
+  --slice-5: inset(80% -6px 5% 0);
+  content: attr(data-text);
+  display: block;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(45deg, transparent 3%, var(--glitch-edge) 3%, var(--glitch-edge) 5%, var(--glitch-face) 5%);
+  text-shadow: -3px -3px 0 var(--color-jake), 3px 3px 0 var(--glitch-edge);
+  clip-path: var(--slice-0);
+}
+
+.glitch-btn:hover::after,
+.glitch-btn:focus-visible::after {
+  animation: 1s glitch;
+  animation-timing-function: steps(2, end);
+}
+
+.glitch-btn:focus-visible {
+  outline: 2px solid var(--color-jake);
+  outline-offset: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glitch-btn:hover::after,
+  .glitch-btn:focus-visible::after {
+    animation: none;
+  }
+}
+
+@keyframes glitch {
+  0%   { clip-path: var(--slice-1); transform: translate(-20px, -10px); }
+  10%  { clip-path: var(--slice-3); transform: translate(10px, 10px); }
+  20%  { clip-path: var(--slice-1); transform: translate(-10px, 10px); }
+  30%  { clip-path: var(--slice-3); transform: translate(0px, 5px); }
+  40%  { clip-path: var(--slice-2); transform: translate(-5px, 0px); }
+  50%  { clip-path: var(--slice-3); transform: translate(5px, 0px); }
+  60%  { clip-path: var(--slice-4); transform: translate(5px, 10px); }
+  70%  { clip-path: var(--slice-2); transform: translate(-10px, 10px); }
+  80%  { clip-path: var(--slice-5); transform: translate(20px, -10px); }
+  90%  { clip-path: var(--slice-1); transform: translate(-10px, 0px); }
+  100% { clip-path: var(--slice-1); transform: translate(0); }
+}
+
+/* Flame lettering for the Reviews heading: gold core -> orange -> red, per line. */
+.flame-text {
+  color: var(--color-fire-hair);
+  background: linear-gradient(180deg, var(--color-fire-gold) 0%, var(--color-fire-hair) 45%, var(--color-fire-flame) 100%) 0 0 / 100% 1lh repeat-y;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 18px rgb(252 56 1 / 0.45));
+}
+
+/* Rainbow lettering for the Tools heading — Lady Rainicorn's stripes, left to right. */
+.rainbow-text {
+  color: var(--color-rain-purple);
+  background: linear-gradient(90deg, var(--color-rain-red), var(--color-rain-gold), var(--color-rain-green), var(--color-rain-teal), var(--color-rain-blue), var(--color-rain-purple), var(--color-rain-pink-deep));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 0 rgb(26 16 48 / 0.18));
+}
+
+/* Frost lettering for the Contact heading: snow-white beard -> ice-blue skin, per line. */
+.frost-text {
+  color: var(--color-ik-beard);
+  background: linear-gradient(180deg, var(--color-ik-beard) 0%, var(--color-ik-skin) 100%) 0 0 / 100% 1lh repeat-y;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 3px 0 var(--color-ik-navy));
+}
+
+/* Falling snow (Contact backdrop). Each .snowflake sets --dur, --delay, --drift inline. */
+@keyframes snow-fall {
+  0%   { top: -4%; transform: translateX(0); opacity: 0; }
+  10%  { opacity: 0.9; }
+  100% { top: 104%; transform: translateX(var(--drift, 0px)); opacity: 0.2; }
+}
+.snowflake {
+  position: absolute;
+  top: -4%;
+  border-radius: 9999px;
+  background: radial-gradient(circle, #fff 0%, var(--color-ik-skin) 60%, transparent 70%);
+  animation: snow-fall var(--dur, 12s) linear infinite;
+  animation-delay: var(--delay, 0s);
+}
+
+/* Rising embers (Reviews backdrop). Each .ember sets --dur, --delay, --drift inline. */
+@keyframes ember-rise {
+  0%   { transform: translate(0, 0) scale(1); opacity: 0; }
+  10%  { opacity: 0.9; }
+  100% { transform: translate(var(--drift, 0px), -85vh) scale(0.3); opacity: 0; }
+}
+.ember {
+  position: absolute;
+  bottom: -12px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, var(--color-fire-gold) 0%, var(--color-fire-flame) 55%, transparent 70%);
+  animation: ember-rise var(--dur, 9s) linear infinite;
+  animation-delay: var(--delay, 0s);
+}
+
+/* Infinite review marquee: the track holds the list twice and slides by half. */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.marquee-track {
+  animation: marquee var(--marquee-duration, 50s) linear infinite;
+}
+.marquee-track--reverse {
+  animation-direction: reverse;
+}
+.marquee:hover .marquee-track,
+.marquee:focus-within .marquee-track {
+  animation-play-state: paused;
+}
+.marquee-mask {
+  mask-image: linear-gradient(to right, transparent, black 7%, black 93%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 7%, black 93%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ember, .snowflake { display: none; }
+  .marquee-track { animation: none; }
+  .marquee { overflow-x: auto; }
 }
 
 .gradient-bg {

@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import Prism from './components/Prism/Prism';
+import { ActiveSectionContext, useActiveSection, useSectionActive, useTrackActiveSection } from './activeSection';
+import { AnimatedAsset } from './components/PortfolioMotion/PortfolioMotion';
 import Logo from './components/Logo/Logo';
-import Coverflow from './components/Coverflow/Coverflow';
 import Reviews from './components/Reviews/Reviews';
-import EyeTicker from './components/EyeTicker/EyeTicker';
+import ScrollExpand from './components/ScrollExpand/ScrollExpand';
+import NumberTicker from './components/NumberTicker/NumberTicker';
+import { DiaTextReveal } from './components/DiaTextReveal/DiaTextReveal';
 import { 
   Linkedin, 
   Instagram, 
@@ -22,8 +25,14 @@ import {
   Github,
   Download,
   Heading1,
-  Moon,
-  Sun
+  Code2,
+  Layers,
+  Database,
+  Bot,
+  Palette,
+  Wrench,
+  Menu,
+  X
 } from 'lucide-react';
 
 // --- Components ---
@@ -40,6 +49,7 @@ const FadeIn = ({ children, delay = 0, direction = 'up', className = "" }: { chi
       viewport={{ once: true, margin: "-50px" }}
       transition={{ duration: 0.7, delay, ease: [0.21, 0.47, 0.32, 0.98] }}
       className={className}
+      data-motion-card={className.includes("motion-stat") || undefined}
       variants={variants}
     >
       {children}
@@ -47,8 +57,73 @@ const FadeIn = ({ children, delay = 0, direction = 'up', className = "" }: { chi
   );
 };
 
+// Navbar look per section (see activeSection.ts). Each also sets the hover
+// colour of .nav-link so links stay readable on that section's surface.
+const NAV_THEMES: Record<string, string> = {
+  home:      'bg-jake-cream/90 border-jake-wood/25 text-jake-ink [&_.nav-link:hover]:text-jake-wood',
+  services:  'bg-bmo-screen/90 border-bmo-ink/20 text-bmo-ink [&_.nav-link:hover]:text-bmo-slot',
+  about:     'bg-finn-hat/90 border-finn-ink/15 text-finn-ink [&_.nav-link:hover]:text-finn-shorts',
+  journey:   'bg-marcy-hair/85 border-marcy-skin/15 text-marcy-skin [&_.nav-link:hover]:text-marcy-red',
+  education: 'bg-gunter-belly/95 border-gunter-navy/15 text-gunter-navy [&_.nav-link:hover]:text-gunter-gold-deep',
+  portfolio: 'bg-pb-skin/90 border-pb-magenta/20 text-pb-ink [&_.nav-link:hover]:text-pb-magenta',
+  reviews:   'bg-fire-ember/85 border-fire-hair/20 text-fire-cream [&_.nav-link:hover]:text-fire-gold',
+  tools:     'bg-rain-blush/90 border-rain-purple/20 text-rain-ink [&_.nav-link:hover]:text-rain-purple',
+  faq:       'bg-lsp-mist/90 border-lsp-deep/15 text-lsp-deep [&_.nav-link:hover]:text-lsp-ink',
+  contact:   'bg-ik-navy/85 border-ik-skin/20 text-white [&_.nav-link:hover]:text-ik-crown',
+};
+const NAV_DEFAULT = 'bg-white/70 border-black/5 text-ink';
+
+// Download Resume button per section, in that character's colours. (Themed
+// entries use plain bg utilities; title-bg is only the default, since its
+// unlayered gradient would override them.)
+const RESUME_THEMES: Record<string, string> = {
+  home:      'bg-jake-fur text-jake-hoodie border-2 border-jake-hoodie shadow-jake-wood/40',
+  services:  'bg-bmo-pink text-bmo-ink border-2 border-bmo-ink shadow-bmo-ink/25',
+  about:     'bg-finn-shorts text-white border-2 border-finn-ink shadow-finn-ink/25',
+  journey:   'bg-marcy-red text-white border-2 border-marcy-skin/40 shadow-marcy-red/40',
+  education: 'bg-gunter-gown text-gunter-gold border-2 border-gunter-gold shadow-gunter-navy/30',
+  portfolio: 'bg-pb-pink text-white border-2 border-pb-ink shadow-pb-magenta/30',
+  reviews:   'bg-linear-to-b from-fire-gold via-fire-hair to-fire-flame text-fire-ember border-2 border-fire-gold/60 shadow-fire-flame/40',
+  tools:     'bg-rain-purple text-white border-2 border-rain-ink shadow-rain-pink/50',
+  faq:       'bg-lsp-body text-lsp-ink border-2 border-lsp-ink shadow-lsp-deep/30',
+  contact:   'bg-ik-crown text-ik-navy border-2 border-ik-navy shadow-ik-crown/40',
+};
+const RESUME_DEFAULT = 'title-bg text-white border-2 border-transparent shadow-title/30';
+
+// Full-bleed themed background that fades in only while its section is current.
+// Parent section must be `relative`, and its content `relative` so it paints above.
+const SectionBackdrop = ({ show, className = "", children }: { show: boolean, className?: string, children?: React.ReactNode }) => (
+  <div
+    aria-hidden="true"
+    className={`pointer-events-none absolute inset-0 transition-opacity duration-700 ${show ? 'opacity-100' : 'opacity-0'} ${className}`}
+  >
+    {children}
+  </div>
+);
+
+// Shared by the navbar (desktop row + mobile menu) and the footer.
+const NAV_LINKS = [
+  { href: '#services', label: 'Services' },
+  { href: '#education', label: 'Education' },
+  { href: '#portfolio', label: 'Portfolio' },
+  { href: '#about', label: 'About' },
+  { href: '#contact', label: 'Contact' }
+];
+const SOCIAL_LINKS = [
+  { href: 'https://www.linkedin.com/in/riel-jake-engana-585644372/', label: 'LinkedIn', Icon: Linkedin },
+  { href: 'https://www.instagram.com/real_jexkz/?hl=en', label: 'Instagram', Icon: Instagram },
+  { href: 'https://www.facebook.com/Engana08', label: 'Facebook', Icon: Facebook },
+  { href: 'https://github.com/Jekx-geidi', label: 'GitHub', Icon: Github }
+];
+
+// Desktop/laptop (lg+): full link row + socials. Phones/tablets: logo, Resume
+// and a burger that drops a menu panel in the current section's theme.
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const section = useActiveSection();
+  const theme = (section && NAV_THEMES[section]) || NAV_DEFAULT;
+  const resumeTheme = (section && RESUME_THEMES[section]) || RESUME_DEFAULT;
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
@@ -56,164 +131,398 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Esc closes the menu, and so does widening the window to desktop.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false); };
+    const desktop = window.matchMedia('(min-width: 1024px)');
+    const onResize = () => { if (desktop.matches) setMenuOpen(false); };
+    window.addEventListener('keydown', onKey);
+    desktop.addEventListener('change', onResize);
+    return () => { window.removeEventListener('keydown', onKey); desktop.removeEventListener('change', onResize); };
+  }, [menuOpen]);
+
+  // An open menu needs a solid bar even at the very top of the page.
+  const solid = isScrolled || menuOpen;
+
   return (
     <nav
-      className={`fixed z-50 px-6 transition-all duration-500 flex justify-between items-center ${
-        isScrolled
-          ? 'top-3 md:top-4 left-3 right-3 md:left-6 md:right-6 lg:left-12 lg:right-12 py-3 md:py-4 rounded-xl bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl shadow-lg border border-black/5 dark:border-white/5'
-          : 'top-0 left-0 right-0 py-6 rounded-none bg-transparent'
+      className={`fixed z-50 transition-all duration-500 ${
+        solid
+          ? `top-3 md:top-4 left-3 right-3 md:left-6 md:right-6 lg:left-12 lg:right-12 rounded-xl backdrop-blur-xl shadow-lg border ${theme}`
+          : 'top-0 left-0 right-0 rounded-none bg-transparent border border-transparent text-ink'
       }`}
     >
-      <a href="#" className="flex items-center">
-        <Logo className="text-xl md:text-2xl text-ink dark:text-white transition-colors" />
-      </a>
-      <div className="hidden md:flex items-center gap-8 font-medium">
-        <a href="#services" className="hover:text-accent-start transition-colors">Services</a>
-        <a href="#education" className="hover:text-accent-start transition-colors">Education</a>
-        <a href="#portfolio" className="hover:text-accent-start transition-colors">Portfolio</a>
-        <a href="#about" className="hover:text-accent-start transition-colors">About</a>
-        <a href="#contact" className="hover:text-accent-start transition-colors">Contact</a>
-      </div>
-      <div className="flex items-center gap-4 md:gap-6">
-        <div className="flex gap-4 opacity-60 hover:opacity-100 transition-opacity">
-          <a href="https://www.linkedin.com/in/riel-jake-engana-585644372/" className="hover:text-accent-start hover:scale-110 transition-all"><Linkedin size={20} /></a>
-          <a href="https://www.instagram.com/real_jexkz/?hl=en" className="hover:text-accent-start hover:scale-110 transition-all"><Instagram size={20} /></a>
-          <a href="https://www.facebook.com/Engana08" className="hover:text-accent-start hover:scale-110 transition-all"><Facebook size={20} /></a>
-          <a href="https://github.com/Jekx-geidi" target="_blank" rel="noopener noreferrer" className="hover:text-accent-start hover:scale-110 transition-all"><Github size={20} /></a>
-        </div>
-        <a
-          href="/RIEL JAKE_ENGANA _VERCEL RESUME_ Geidi.jpg"
-          download
-          className="flex items-center gap-2 gradient-bg text-white px-4 md:px-6 py-2 rounded-full font-semibold text-xs md:text-sm hover:scale-105 transition-transform shadow-lg shadow-accent-start/20"
-        >
-          <Download size={16}/>
-          <span className="hidden md:inline">Download Resume</span>
-          <span className="inline md:hidden">Resume</span>
+      <div className={`flex justify-between items-center gap-3 px-4 md:px-6 transition-all duration-500 ${solid ? 'py-3 md:py-4' : 'py-5 md:py-6'}`}>
+        <a href="#" className="flex items-center shrink-0" onClick={() => setMenuOpen(false)}>
+          <Logo className="text-lg md:text-2xl" />
         </a>
+        <div className="hidden lg:flex items-center gap-8 font-medium">
+          {NAV_LINKS.map((l) => (
+            <a key={l.href} href={l.href} className="nav-link hover:text-jake transition-colors">{l.label}</a>
+          ))}
+        </div>
+        <div className="flex items-center gap-2 md:gap-4 lg:gap-6">
+          <div className="hidden lg:flex gap-4 opacity-60 hover:opacity-100 transition-opacity">
+            {SOCIAL_LINKS.map(({ href, label, Icon }) => (
+              <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label} className="nav-link hover:text-jake hover:scale-110 transition-all"><Icon size={20} /></a>
+            ))}
+          </div>
+          <a
+            href="/RIEL JAKE_ENGANA _VERCEL RESUME_ Geidi.jpg"
+            download
+            className={`flex items-center gap-2 ${resumeTheme} px-3.5 md:px-6 py-2 rounded-full font-semibold text-xs md:text-sm hover:scale-105 transition-all duration-300 shadow-lg`}
+          >
+            <Download size={16}/>
+            <span className="hidden sm:inline">Download Resume</span>
+            <span className="inline sm:hidden">Resume</span>
+          </a>
+          <button
+            type="button"
+            onClick={() => setMenuOpen((o) => !o)}
+            aria-expanded={menuOpen}
+            aria-controls="mobile-menu"
+            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+            className="lg:hidden w-10 h-10 shrink-0 rounded-full border border-current/25 flex items-center justify-center hover:bg-current/10 transition-colors"
+          >
+            {menuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
       </div>
+
+      <AnimatePresence initial={false}>
+        {menuOpen && (
+          <motion.div
+            id="mobile-menu"
+            key="mobile-menu"
+            className="lg:hidden overflow-hidden"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+          >
+            <div className="px-4 md:px-6 pb-5 border-t border-current/10">
+              <ul className="flex flex-col pt-2">
+                {NAV_LINKS.map((l, i) => (
+                  <motion.li
+                    key={l.href}
+                    initial={{ opacity: 0, x: -12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.05 + i * 0.04 }}
+                  >
+                    <a
+                      href={l.href}
+                      onClick={() => setMenuOpen(false)}
+                      className="nav-link flex items-center justify-between py-3 text-xl font-display font-bold border-b border-current/10 transition-colors"
+                    >
+                      {l.label}
+                      <ArrowUpRight size={18} className="opacity-50" />
+                    </a>
+                  </motion.li>
+                ))}
+              </ul>
+              <div className="flex gap-3 pt-4">
+                {SOCIAL_LINKS.map(({ href, label, Icon }) => (
+                  <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label} className="nav-link w-10 h-10 rounded-full border border-current/20 flex items-center justify-center transition-colors">
+                    <Icon size={18} />
+                  </a>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </nav>
   );
 };
 
-const heroSlides = [
-  {
-    title: "Behind the Lens",
-    image: {
-      src: "/474476352_1323057112154215_6879089384102707022_n.jpg",
-      alt: "Riel Jake Engaña crouching to shoot with a Fujifilm camera at an AMA Senior High event"
-    }
-  },
-  {
-    title: "Senior High",
-    image: {
-      src: "/474590781_1323907835402476_1613737370478227588_n.jpg",
-      alt: "Riel Jake Engaña in a blazer and AMA Senior High lanyard"
-    }
-  },
-  {
-    title: "Graduation",
-    image: {
-      src: "/475029024_1325299558596637_1364348765224487916_n - Copy.jpg",
-      alt: "Riel Jake Engaña in a red graduation toga holding his certificate"
-    }
-  },
-  {
-    title: "USJ-R 2024–2026",
-    image: {
-      src: "/475047621_1325302188596374_5734427133831803104_n.jpg",
-      alt: "Riel Jake Engaña — University of San Jose-Recoletos 2024–2026 portrait"
-    }
-  }
-];
+// Coding Jake that waves and says hi on hover (tap toggles on touch screens).
+// Both images share one crop (see public/jake-*.webp) so the swap doesn't shift.
+const HeroJake = () => {
+  const [waving, setWaving] = useState(false);
 
-const Hero = () => (
-  <section className="relative min-h-screen flex items-center pt-20 overflow-hidden px-6 md:px-20">
-    {/* Background Typography */}
-    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[20vw] font-display font-black text-black/[0.03] dark:text-white/[0.02] select-none pointer-events-none uppercase tracking-tighter transition-colors">
-      Agentic
+  return (
+    <div
+      className="relative w-full max-w-xl lg:w-[125%] lg:max-w-none cursor-pointer select-none"
+      role="button"
+      tabIndex={0}
+      aria-label="Say hello to Jake"
+      aria-pressed={waving}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          setWaving(w => !w);
+        }
+      }}
+      onMouseEnter={() => setWaving(true)}
+      onMouseLeave={() => setWaving(false)}
+      onBlur={() => setWaving(false)}
+      onClick={() => setWaving(w => !w)}
+    >
+      <motion.div
+        animate={waving ? { y: [0, -14, 0], rotate: [0, -1.5, 1.5, 0] } : { y: 0, rotate: 0 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className="relative"
+      >
+        <img
+          src="/jake-coding.webp"
+          alt="Jake the Dog coding on a laptop at a desk"
+          width={1200}
+          height={671}
+          className={`w-full h-auto drop-shadow-2xl transition-opacity duration-200 ${waving ? 'opacity-0' : 'opacity-100'}`}
+          draggable={false}
+        />
+        <img
+          src="/jake-wave.webp"
+          alt=""
+          aria-hidden="true"
+          width={1200}
+          height={671}
+          className={`absolute inset-0 w-full h-auto drop-shadow-2xl transition-opacity duration-200 ${waving ? 'opacity-100' : 'opacity-0'}`}
+          draggable={false}
+        />
+      </motion.div>
+
+      <AnimatePresence>
+        {waving && (
+          <motion.div
+            key="jake-hi"
+            initial={{ opacity: 0, scale: 0.4, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.6, y: 6 }}
+            transition={{ type: "spring", stiffness: 420, damping: 18 }}
+            style={{ transformOrigin: 'bottom left' }}
+            className="absolute -top-6 left-[62%] md:-top-10 z-10"
+            role="status"
+          >
+            <div className="relative whitespace-nowrap rounded-2xl border-4 border-ink bg-white px-4 py-2 md:px-5 md:py-3 font-display text-xl md:text-3xl text-ink shadow-[4px_4px_0_var(--color-ink)]">
+              Hi I am <span className="text-jake">Jake!</span>
+              {/* Bubble tail pointing down-left toward Jake's head */}
+              <span className="absolute -bottom-[14px] left-5 h-0 w-0 border-x-[10px] border-t-[14px] border-x-transparent border-t-ink" />
+              <span className="absolute -bottom-[8px] left-[23px] h-0 w-0 border-x-[7px] border-t-[10px] border-x-transparent border-t-white" />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
+  );
+};
 
-    <div className="grid md:grid-cols-2 gap-12 items-center w-full max-w-7xl mx-auto">
-      <motion.div 
+const PROFILE_TEXT = [
+  "Hi, I'm Riel Jake Engaña, a Software-Augmented Software Developer Intern at Geidi IT, specializing in AI automation and intelligent software systems. My work focuses on developing AI-augmented applications, autonomous agents, and agentic workflows capable of reasoning, planning, and executing complex tasks.",
+  "My background combines the analytical and process-oriented principles of Industrial Engineering with practical experience in software development and artificial intelligence. I work with multi-agent architectures, LLM orchestration, AI integration, and end-to-end process automation to develop efficient and scalable software solutions.",
+  "Currently, I contribute to the development and deployment of production-ready AI-augmented and agentic systems at Geidi IT while completing my degree in Software Development at the University of San Jose–Recoletos (USJ-R)."
+].join("\n\n");
+
+// "Read Profile": the parchment unrolls, then the bio is written onto it a few
+// letters at a time in handwriting, and signed. Skip / Esc / backdrop close.
+const ProfileScroll = ({ onClose }: { onClose: () => void }) => {
+  const reduceMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const [count, setCount] = useState(reduceMotion ? PROFILE_TEXT.length : 0);
+  const done = count >= PROFILE_TEXT.length;
+  const closeRef = React.useRef<HTMLButtonElement>(null);
+  const textRef = React.useRef<HTMLDivElement>(null);
+
+  // write ~2 letters every 22ms, starting once the paper has unrolled
+  useEffect(() => {
+    if (done) return;
+    let tick: ReturnType<typeof setInterval> | undefined;
+    const start = setTimeout(() => {
+      tick = setInterval(() => setCount((c) => Math.min(PROFILE_TEXT.length, c + 2)), 22);
+    }, 700);
+    return () => { clearTimeout(start); if (tick) clearInterval(tick); };
+  }, [done]);
+
+  // keep the pen in view as the text grows
+  useEffect(() => {
+    const el = textRef.current;
+    if (el && !done) el.scrollTop = el.scrollHeight;
+  }, [count, done]);
+
+  // Esc closes, lock page scroll, focus the close button
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    closeRef.current?.focus();
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
+  }, [onClose]);
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-jake-hoodie/70 backdrop-blur-sm"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="profile-scroll-title"
+    >
+      <motion.div
+        className="@container relative w-[min(92vw,580px,66vh)] aspect-[1086/1448]"
+        style={{ transformOrigin: 'center' }}
+        initial={{ scaleY: 0.08, opacity: 0, rotate: -2 }}
+        animate={{ scaleY: 1, opacity: 1, rotate: 0 }}
+        exit={{ scaleY: 0.08, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 140, damping: 18 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <img src="/paper.webp" alt="" className="absolute inset-0 w-full h-full select-none drop-shadow-[0_24px_40px_rgba(0,0,0,0.45)]" draggable={false} />
+
+        <div className="absolute left-[14%] right-[13%] top-[17.5%] bottom-[18%] flex flex-col">
+          <h2 id="profile-scroll-title" className="handwriting text-[7cqw] leading-none -rotate-2 mb-[1.5cqw]">
+            About me
+          </h2>
+          <div
+            ref={textRef}
+            className="handwriting flex-1 min-h-0 overflow-y-auto no-scrollbar whitespace-pre-line text-[3.05cqw] leading-[1.22] -rotate-[0.6deg] pr-1"
+            aria-live="off"
+          >
+            <span className="sr-only">{PROFILE_TEXT}</span>
+            <span aria-hidden="true">
+              {PROFILE_TEXT.slice(0, count)}
+              {!done && <span className="pen-tip" />}
+            </span>
+          </div>
+          {done && (
+            <motion.div
+              className="self-end mt-1 flex flex-col items-end"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <span className="handwriting text-[6cqw] leading-none -rotate-3">— Jake</span>
+              <svg viewBox="0 0 140 14" className="w-28 h-3 -mt-1" aria-hidden="true">
+                <motion.path
+                  d="M2 9 C 30 2, 60 13, 90 6 S 130 4, 138 8"
+                  fill="none"
+                  stroke="#2B1A0A"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{ duration: 0.8, delay: 0.3 }}
+                />
+              </svg>
+            </motion.div>
+          )}
+        </div>
+      </motion.div>
+
+      <div className="absolute top-4 right-4 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+        {!done && (
+          <button
+            type="button"
+            onClick={() => setCount(PROFILE_TEXT.length)}
+            className="rounded-full bg-jake-fur text-jake-hoodie border-2 border-jake-hoodie px-4 py-2 text-sm font-bold uppercase tracking-widest"
+          >
+            Skip
+          </button>
+        )}
+        <button
+          ref={closeRef}
+          type="button"
+          onClick={onClose}
+          aria-label="Close profile"
+          className="w-11 h-11 rounded-full bg-white text-jake-hoodie border-2 border-jake-hoodie flex items-center justify-center text-xl font-bold"
+        >
+          ✕
+        </button>
+      </div>
+    </motion.div>
+  );
+};
+
+// Sweep colours for the headline reveal: Jake's fur, desk, and the books on it.
+const JAKE_SWEEP = ['#F9BB00', '#DE8234', '#B5352E', '#2E4C7C', '#285039'];
+
+// Jake-themed hero: warm cream -> golden backdrop over the Tree Fort scene,
+// cocoa headline with Jake-orange "AI" and Jake-yellow "Software" (orange offset shadow),
+// desk-book coloured tags, and Jake at his desk.
+const Hero = () => {
+  const [profileOpen, setProfileOpen] = useState(false);
+  const closeProfile = React.useCallback(() => setProfileOpen(false), []);
+
+  return (
+  <section id="home" className="relative min-h-screen flex items-center pt-24 pb-12 overflow-hidden px-6 md:px-20 bg-linear-to-b from-jake-cream via-[#FFEAB0] to-[#FFD65C]">
+    <img
+      src="/BG.webp"
+      alt=""
+      aria-hidden="true"
+      className="absolute inset-0 w-full h-full object-cover opacity-25 mix-blend-multiply select-none pointer-events-none"
+      style={{
+        maskImage: 'linear-gradient(to bottom, black 55%, transparent 100%)',
+        WebkitMaskImage: 'linear-gradient(to bottom, black 55%, transparent 100%)'
+      }}
+    />
+    {/* Warm wash behind the headline, clearing toward Jake on the right */}
+    <div className="absolute inset-0 pointer-events-none bg-linear-to-r from-jake-cream/85 via-jake-cream/35 to-transparent" />
+
+    <div className="relative z-10 grid md:grid-cols-2 gap-12 items-center w-full max-w-7xl mx-auto">
+      <motion.div
         initial={{ opacity: 0, x: -50 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.8, ease: "easeOut" }}
         className="relative z-10"
       >
-        <h1 className="text-5xl md:text-8xl font-display font-bold leading-[0.9] tracking-tighter mb-6 mt-12 md:mt-0">
-          AI Augmented,<br />
-          <span className="gradient-text"> Software</span><br />
-          Developer.
+        <span className="inline-flex items-center gap-2 rounded-full bg-jake-hoodie text-jake-fur px-4 py-2 text-sm font-bold tracking-wide shadow-[3px_3px_0_var(--color-jake-wood)]">
+          Hi, I'm Riel Jake Engaña
+        </span>
+        <h1 className="mt-6 text-5xl md:text-7xl lg:text-8xl font-display font-bold leading-[0.9] tracking-tighter text-jake-ink">
+          <DiaTextReveal text="AI" colors={JAKE_SWEEP} textColor="var(--color-jake-wood)" delay={0.2} duration={1.1} startOnView={false} />{' '}
+          <DiaTextReveal text="Augmented," colors={JAKE_SWEEP} textColor="var(--color-jake-ink)" delay={0.45} duration={1.3} startOnView={false} /><br />
+          <DiaTextReveal text="Software" colors={JAKE_SWEEP} textColor="var(--color-jake-fur)" delay={0.85} duration={1.3} startOnView={false} className="jake-shadow" /><br />
+          <DiaTextReveal text="Developer." colors={JAKE_SWEEP} textColor="var(--color-jake-ink)" delay={1.25} duration={1.3} startOnView={false} />
         </h1>
-        <p className="text-xl text-ink/60 dark:text-slate-400 max-w-md mb-8 leading-relaxed">
-          Hi, I'm <span className="text-ink dark:text-white font-semibold">Riel Jake Engaña</span>, a Software-Augmented Software Developer Intern at Geidi IT, specializing in AI automation and intelligent software systems. My work focuses on developing AI-augmented applications, autonomous agents, and agentic workflows capable of reasoning, planning, and executing complex tasks.
-My background combines the analytical and process-oriented principles of Industrial Engineering with practical experience in software development and artificial intelligence. I work with multi-agent architectures, LLM orchestration, AI integration, and end-to-end process automation to develop efficient and scalable software solutions.
-Currently, I contribute to the development and deployment of production-ready AI-augmented and agentic systems at Geidi IT while completing my degree in Software Development at the University of San Jose–Recoletos (USJ-R).
+        <p className="mt-6 max-w-lg text-lg md:text-xl leading-relaxed text-jake-ink/75 font-medium">
+          Software Developer Intern at Geidi IT, building AI automation, autonomous agents and agentic workflows.
         </p>
-        
-        <div className="relative inline-block">
-          <span className="font-signature text-5xl text-accent-start -rotate-6 block absolute -top-8 -right-12 pointer-events-none opacity-80">
-          </span>
-          <button className="bg-ink dark:bg-white top-20 bottom-20 text-white dark:text-ink px-8 py-4 rounded-full font-bold text-lg flex items-center gap-3 hover:bg-ink/90 dark:hover:bg-white/90 transition-colors group">
-            View My Work
-            <ArrowUpRight className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-          </button>
+        <ul className="mt-5 flex flex-wrap gap-2" aria-label="Focus areas">
+          {[
+            { label: "AI Automation", cls: "bg-jake-book-red" },
+            { label: "Agentic Workflows", cls: "bg-jake-book-blue" },
+            { label: "Full-Stack Development", cls: "bg-jake-book-green" }
+          ].map((t) => (
+            <li key={t.label} className={`${t.cls} text-white text-xs md:text-sm font-bold uppercase tracking-wider rounded-md px-3 py-1.5 border-2 border-jake-hoodie shadow-[2px_2px_0_var(--color-jake-hoodie)]`}>
+              {t.label}
+            </li>
+          ))}
+        </ul>
+        <div className="flex flex-wrap items-center gap-6 mt-9">
+          <a href="#contact" className="glitch-btn glitch-btn--jake" data-text="ENQUIRE">ENQUIRE</a>
+          <button type="button" onClick={() => setProfileOpen(true)} className="glitch-btn glitch-btn--jake-alt" data-text="READ PROFILE">READ PROFILE</button>
         </div>
       </motion.div>
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 1, ease: "easeOut" }}
-        className="relative flex justify-center"
+        className="relative flex justify-center lg:justify-start"
       >
-        {/* 3D Coverflow Gallery */}
-        <div className="relative w-full h-[380px] md:h-[440px]">
-          <Coverflow
-            slides={heroSlides}
-            cardWidth={280}
-            cardHeight={280}
-            radius={4}
-            tilt={12}
-            sideTilt={6}
-            gap={6}
-            opacity={55}
-            showTitle={false}
-          />
-        </div>
-
-        {/* Floating Tags */}
-                <motion.div
-                  animate={{ y: [0, -10, 0] }}
-                  whileHover={{ scale: 1.1 }}
-                  transition={{ y: { duration: 4, repeat: Infinity, ease: "easeInOut" } }}
-                  className="absolute top-4 md:top-10 -left-2 md:-left-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md px-3 md:px-4 py-1.5 md:py-2 rounded-full shadow-lg font-bold text-xs md:text-sm border border-black/5 dark:border-white/10 cursor-pointer"
-                >
-                  🤖 Agentic AI
-                </motion.div>
-                <motion.div
-                  animate={{ y: [0, 10, 0] }}
-                  whileHover={{ scale: 1.1 }}
-                  transition={{ y: { duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.5 } }}
-                  className="absolute bottom-10 md:bottom-20 -right-2 md:-right-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md px-3 md:px-4 py-1.5 md:py-2 rounded-full shadow-lg font-bold text-xs md:text-sm border border-black/5 dark:border-white/10 cursor-pointer"
-                >
-                  ⚡ Multi-Agent
-                </motion.div>
-                <motion.div
-                  animate={{ x: [0, 10, 0] }}
-                  whileHover={{ scale: 1.1 }}
-                  transition={{ x: { duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1 } }}
-                  className="absolute top-1/2 -right-2 md:-right-10 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md px-3 md:px-4 py-1.5 md:py-2 rounded-full shadow-lg font-bold text-xs md:text-sm border border-black/5 dark:border-white/10 cursor-pointer"
-                >
-                  🔧 LLM Ops
-                </motion.div>
+        {/* warm glow under Jake */}
+        <div className="absolute inset-x-[10%] bottom-[6%] h-[30%] rounded-full bg-jake-wood/25 blur-3xl" aria-hidden="true" />
+        <HeroJake />
       </motion.div>
     </div>
+
+    {/* Portal to <body> so the modal sits above the fixed navbar; AnimatePresence
+        goes inside the portal (it ignores portal objects as direct children). */}
+    {createPortal(
+      <AnimatePresence>
+        {profileOpen && <ProfileScroll key="profile" onClose={closeProfile} />}
+      </AnimatePresence>,
+      document.body
+    )}
   </section>
-);
+  );
+};
 
 const ServiceAccordion = () => {
   const [expanded, setExpanded] = useState<number | null>(1);
+  const onSection = useSectionActive('services');
 
   const services = [
     { id: 0, title: "Branding", desc: "Crafting unique visual identities that resonate with your audience and stand the test of time." },
@@ -225,49 +534,90 @@ const ServiceAccordion = () => {
   ];
 
   return (
-    <section id="services" className="py-32 px-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row justify-between items-end mb-20 gap-8">
-          <h2 className="text-5xl md:text-7xl font-display font-bold tracking-tighter">
-            My Specialized<br />Services.
+    // BMO-themed: body-teal backdrop, screen-cream cards with BMO's line-art
+    // outline and a hard cartoon shadow, D-pad / big-pink-button toggles.
+    <section id="services" className="relative overflow-hidden py-32 px-6 text-bmo-ink">
+      <SectionBackdrop show={onSection} className="bg-linear-to-b from-bmo to-bmo-shade">
+        {/* Tree Fort scene, dimmed and faded at the edges like the hero background */}
+        <img
+          src="/bmo-bg.webp"
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover opacity-35 select-none"
+          style={{
+            maskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)'
+          }}
+        />
+      </SectionBackdrop>
+      <div className="relative max-w-7xl mx-auto">
+        <div className="flex flex-col lg:flex-row justify-between lg:items-end mb-16 lg:mb-20 gap-8">
+          <h2 className="text-5xl md:text-7xl font-display font-bold tracking-tighter text-bmo-ink">
+            My Specialized<br /><span className="bmo-outline text-bmo-pink">Services.</span>
           </h2>
-          <p className="text-ink/60 dark:text-slate-400 max-w-xs text-lg">
-            I provide comprehensive design solutions tailored to your business goals.
-          </p>
+          <div className="flex items-end gap-6">
+            <div className="flex flex-col gap-4 pb-4">
+              {/* BMO's face buttons as a little accent row */}
+              <div className="flex items-center gap-3" aria-hidden="true">
+                <span className="w-6 h-6 bg-bmo-blue border-[3px] border-bmo-ink [clip-path:polygon(50%_0,100%_100%,0_100%)]" />
+                <span className="w-4 h-4 rounded-full bg-bmo-yellow border-[3px] border-bmo-ink" />
+                <span className="w-3 h-3 rounded-full bg-bmo-pink border-2 border-bmo-ink" />
+                <span className="w-10 h-3 rounded-full bg-bmo-slot border-2 border-bmo-ink" />
+              </div>
+              <p className="text-bmo-ink/80 max-w-xs text-lg font-medium">
+                I provide comprehensive design solutions tailored to your business goals.
+              </p>
+            </div>
+            <AnimatedAsset
+              src="/bmo.webp"
+              alt="BMO from Adventure Time sitting and smiling"
+              width={600}
+              height={577}
+              animate={{ y: [0, -10, 0], rotate: [0, -2, 0] }}
+              transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+              className="w-32 md:w-48 h-auto shrink-0 select-none drop-shadow-[6px_6px_0_rgba(23,4,20,0.25)]"
+              draggable={false}
+            />
+          </div>
         </div>
 
-        <div className="space-y-4">
-          {services.map((service, idx) => (
-            <FadeIn 
+        <div className="space-y-5">
+          {services.map((service, idx) => {
+            const isOpen = expanded === service.id;
+            return (
+            <FadeIn
               key={service.id}
               delay={idx * 0.1}
-              className={`rounded-3xl border transition-all duration-500 overflow-hidden ${
-                expanded === service.id ? 'bg-black/5 dark:bg-white/10 border-transparent shadow-inner' : 'bg-white/50 dark:bg-slate-800/50 border-black/5 dark:border-white/5 hover:border-black/20 dark:hover:border-white/20 backdrop-blur-sm'
+              data-motion-card
+              className={`rounded-[1.75rem] border-4 border-bmo-ink bg-bmo-screen overflow-hidden transition-all duration-300 ${
+                isOpen ? 'shadow-[8px_8px_0_var(--color-bmo-ink)] ' : 'shadow-[5px_5px_0_var(--color-bmo-ink)] hover:shadow-[8px_8px_0_var(--color-bmo-ink)]'
               }`}
             >
-              <button 
-                onClick={() => setExpanded(expanded === service.id ? null : service.id)}
-                className="w-full p-6 md:px-8 md:py-10 flex justify-between items-center text-left gap-4"
+              <button
+                onClick={() => setExpanded(isOpen ? null : service.id)}
+                aria-expanded={isOpen}
+                className="w-full p-6 md:px-8 md:py-9 flex justify-between items-center text-left gap-4"
               >
-                <span className="text-2xl md:text-5xl font-display font-bold tracking-tight">
+                <span className="text-2xl md:text-5xl font-display font-bold tracking-tight text-bmo-ink">
                   {service.title}
                 </span>
-                <div className={`w-10 h-10 md:w-12 md:h-12 shrink-0 rounded-full flex items-center justify-center transition-colors ${
-                  expanded === service.id ? 'bg-accent-start text-white' : 'bg-black/5 dark:bg-white/10 text-ink dark:text-white'
+                <div className={`w-11 h-11 md:w-14 md:h-14 shrink-0 flex items-center justify-center border-[3px] border-bmo-ink text-bmo-ink transition-all duration-300 ${
+                  isOpen ? 'rounded-full bg-bmo-pink shadow-[inset_0_-4px_0_rgba(23,4,20,0.25)]' : 'rounded-xl bg-bmo-yellow shadow-[inset_0_-4px_0_rgba(23,4,20,0.2)]'
                 }`}>
-                  {expanded === service.id ? <Minus /> : <Plus />}
+                  {isOpen ? <Minus strokeWidth={3} /> : <Plus strokeWidth={3} />}
                 </div>
               </button>
               <AnimatePresence>
-                {expanded === service.id && (
-                  <motion.div 
+                {isOpen && (
+                  <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.4, ease: "easeInOut" }}
                   >
-                    <div className="px-6 pb-6 md:px-8 md:pb-10 max-w-2xl">
-                      <p className="text-lg md:text-xl text-ink/70 dark:text-slate-300 leading-relaxed">
+                    <div className="px-6 pb-6 md:px-8 md:pb-9 max-w-2xl">
+                      {/* BMO's screen slot */}
+                      <span className="block w-20 h-3 mb-4 rounded-full bg-bmo-slot border-2 border-bmo-ink" aria-hidden="true" />
+                      <p className="text-lg md:text-xl text-bmo-slot font-medium leading-relaxed">
                         {service.desc}
                       </p>
                     </div>
@@ -275,28 +625,59 @@ const ServiceAccordion = () => {
                 )}
               </AnimatePresence>
             </FadeIn>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>
   );
 };
 
-const AboutStats = () => (
+// Finn-themed: shirt-to-shorts blue backdrop, hat-white outlined quote, a
+// Finn-hat frame (with ears) on the photo, and hat-white stat cards.
+const AboutStats = () => {
+  const onSection = useSectionActive('about');
+
+  return (
   <section id="about" className="py-32 px-6 relative overflow-hidden">
+    <SectionBackdrop show={onSection} className="bg-linear-to-b from-finn-shirt to-finn-shorts">
+      {/* Finn background scene, dimmed and faded at the edges like the hero background */}
+      <img
+        src="/finn-bg.webp"
+        alt=""
+        className="absolute inset-0 w-full h-full object-cover opacity-35 select-none"
+        style={{
+          maskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)'
+        }}
+      />
+    </SectionBackdrop>
+    <AnimatedAsset
+      src="/finn.webp"
+      alt="Finn the Human jumping with a fist in the air"
+      width={457}
+      height={900}
+      animate={{ y: [0, -18, 0], rotate: [-3, 3, -3] }}
+      transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+      className="relative z-10 block mx-auto w-28 mb-10 xl:absolute xl:left-[2%] xl:top-28 xl:w-44 2xl:w-56 xl:mb-0 h-auto select-none drop-shadow-[8px_8px_0_rgba(17,17,17,0.25)]"
+      draggable={false}
+    />
+
     <div className="max-w-4xl mx-auto text-center relative z-10">
       <motion.h2 
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
-        className="text-2xl md:text-5xl font-display font-medium leading-tight mb-12 md:mb-20"
+        className={`finn-outline text-2xl md:text-5xl font-display font-medium leading-tight mb-12 md:mb-20 transition-colors duration-700 ${onSection ? 'text-finn-hat' : 'text-finn-shorts'}`}
       >
         "UI/UX designer crafting intuitive, user-friendly experiences through wireframing, prototyping, and visual design."
       </motion.h2>
 
       <div className="flex justify-center mb-20">
-        <div className="relative group">
-          <div className="absolute inset-0 bg-accent-start blur-2xl opacity-20 group-hover:opacity-40 transition-opacity rounded-full" />
-          <div className="relative w-32 h-32 md:w-48 md:h-48 rounded-full overflow-hidden border-4 border-white dark:border-slate-800 shadow-xl transition-colors cursor-pointer hover:scale-105 duration-500">
+        <div className="relative group pt-5">
+          {/* Finn's hat ears */}
+          <span className="absolute top-0 left-[18%] w-8 h-8 md:w-11 md:h-11 rounded-t-full rounded-b-md bg-finn-hat border-4 border-finn-ink" aria-hidden="true" />
+          <span className="absolute top-0 right-[18%] w-8 h-8 md:w-11 md:h-11 rounded-t-full rounded-b-md bg-finn-hat border-4 border-finn-ink" aria-hidden="true" />
+          <div className="relative w-32 h-32 md:w-48 md:h-48 rounded-full overflow-hidden border-[10px] border-finn-hat ring-4 ring-finn-ink shadow-[8px_8px_0_rgba(17,17,17,0.35)] cursor-pointer hover:scale-105 transition-transform duration-500">
             <img 
               src="/699273422_1702802617512994_1962015335284207172_n.jpg" 
               alt="Designer Profile" 
@@ -307,22 +688,28 @@ const AboutStats = () => (
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-5 md:gap-6">
         {[
-          { label: "Years of Experience", value: "05" },
-          { label: "Projects Completed", value: "50+" },
-          { label: "Client Rating", value: "4.50" },
-          { label: "Design Awards", value: "17" }
+          { label: "Years of Experience", value: 5, minIntegerDigits: 2 },
+          { label: "Projects Completed", value: 50, suffix: "+" },
+          { label: "Client Rating", value: 4.5, decimalPlaces: 2 },
+          { label: "Design Awards", value: 17 }
         ].map((stat, i) => (
-          <FadeIn key={i} delay={i * 0.1} className="flex flex-col items-center">
-            <span className="text-4xl md:text-7xl font-display font-bold mb-2">{stat.value}</span>
-            <span className="text-xs font-bold uppercase tracking-widest text-ink/40 dark:text-slate-500">{stat.label}</span>
+          <FadeIn key={i} delay={i * 0.1} className="motion-stat flex flex-col items-center rounded-3xl bg-finn-hat border-4 border-finn-ink shadow-[6px_6px_0_var(--color-finn-ink)] px-3 pt-6 pb-5 overflow-hidden">
+            <span className="text-4xl md:text-6xl font-display font-bold mb-2 text-finn-shorts">
+              <NumberTicker value={stat.value} decimalPlaces={stat.decimalPlaces} minIntegerDigits={stat.minIntegerDigits} delay={0.15 + i * 0.12} />
+              {stat.suffix}
+            </span>
+            <span className="text-xs font-bold uppercase tracking-widest text-finn-ink/60">{stat.label}</span>
+            {/* backpack-green strip */}
+            <span className="mt-4 h-2 w-12 rounded-full bg-finn-pack border-2 border-finn-ink" aria-hidden="true" />
           </FadeIn>
         ))}
       </div>
     </div>
   </section>
-);
+  );
+};
 
 const JourneyTimeline = () => {
   const journey = [
@@ -361,15 +748,45 @@ const JourneyTimeline = () => {
   const active = journey[activeIndex];
   const goToPrevious = () => setActiveIndex((activeIndex - 1 + journey.length) % journey.length);
   const goToNext = () => setActiveIndex((activeIndex + 1) % journey.length);
+  // Section fades to black (and switches its dark: styles on) while it's on screen.
+  // Marceline-themed while current: night sky from her hair, pale-cyan skin
+  // lettering, red accents. `dark` also switches on the section's dark: styles.
+  const onSection = useSectionActive('journey');
 
   return (
-    <section id="journey" className="scroll-mt-24 py-32 px-6 overflow-hidden">
-      <div className="max-w-7xl mx-auto">
+    <section
+      id="journey"
+      className={`relative scroll-mt-24 py-32 px-6 overflow-hidden transition-colors duration-700 ${onSection ? 'dark text-marcy-skin' : ''}`}
+    >
+      <SectionBackdrop show={onSection} className="bg-linear-to-b from-marcy-hair via-[#15123A] to-marcy-jeans/80">
+        {/* Marceline background scene, dimmed and faded at the edges like the hero background */}
+        <img
+          src="/marceline-bg.webp"
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover opacity-35 select-none"
+          style={{
+            maskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)'
+          }}
+        />
+      </SectionBackdrop>
+      <AnimatedAsset
+        src="/marceline.webp"
+        alt="Marceline the Vampire Queen floating and playing her bass"
+        width={700}
+        height={707}
+        initial={false}
+        animate={onSection ? { opacity: 1, x: 0, y: [0, -14, 0] } : { opacity: 0, x: 40, y: 0 }}
+        transition={onSection ? { opacity: { duration: 0.7 }, x: { duration: 0.7 }, y: { duration: 4, repeat: Infinity, ease: "easeInOut" } } : { duration: 0.4 }}
+        className="hidden xl:block absolute right-[3%] bottom-16 w-72 2xl:w-80 h-auto z-10 pointer-events-none select-none drop-shadow-[0_0_30px_rgba(195,236,238,0.25)]"
+        draggable={false}
+      />
+      <div className="relative max-w-7xl mx-auto">
         <FadeIn>
           <div className="mb-16 md:mb-24">
-            <p className="text-sm font-bold uppercase tracking-widest text-accent-start mb-4">Philippines</p>
+            <p className="text-sm font-bold uppercase tracking-widest text-accent-start dark:text-marcy-skin/70 transition-colors mb-4">Philippines</p>
             <div className="grid md:grid-cols-[0.9fr_1.1fr] gap-8 md:gap-16 items-end">
-              <h2 className="text-5xl md:text-7xl font-display font-bold tracking-tighter">
+              <h2 className={`text-5xl md:text-7xl font-display font-bold tracking-tighter ${onSection ? 'text-marcy-skin' : 'title-text'}`}>
                 Tech Journey<br />the years.
               </h2>
               <p className="text-lg md:text-xl text-ink/65 dark:text-slate-300 leading-relaxed max-w-2xl">
@@ -401,10 +818,10 @@ const JourneyTimeline = () => {
                   className={`group flex flex-col items-center gap-3 transition-opacity ${index === activeIndex ? 'opacity-100' : 'opacity-45 hover:opacity-80'}`}
                   aria-label={`Show ${item.year} journey milestone`}
                 >
-                  <span className={`text-sm md:text-4xl font-display font-bold transition-colors ${index === activeIndex ? 'text-ink dark:text-white' : 'text-ink/50 dark:text-white/50'}`}>
+                  <span className={`text-sm md:text-4xl font-display font-bold transition-colors ${index === activeIndex ? (onSection ? 'text-marcy-skin' : 'title-text') : 'text-title/50 dark:text-marcy-skin/35'}`}>
                     {item.year}
                   </span>
-                  <span className={`w-5 h-5 rounded-full border-4 transition-colors ${index === activeIndex ? 'bg-accent-start border-white dark:border-slate-950 shadow-lg shadow-accent-start/30' : 'bg-white dark:bg-slate-800 border-accent-start/70'}`} />
+                  <span className={`w-5 h-5 rounded-full border-4 transition-colors ${index === activeIndex ? 'bg-accent-start border-white shadow-lg shadow-accent-start/30 dark:bg-marcy-red dark:border-marcy-hair dark:shadow-marcy-red/40' : 'bg-white border-accent-start/70 dark:bg-marcy-hair dark:border-marcy-red/60'}`} />
                 </button>
               ))}
             </div>
@@ -429,16 +846,16 @@ const JourneyTimeline = () => {
               className="grid md:grid-cols-[0.9fr_1.1fr] gap-10 md:gap-16 items-center"
             >
               <div className="md:text-right">
-                <p className="text-sm font-bold uppercase tracking-widest text-accent-start mb-3">My journey</p>
-                <h3 className="text-3xl md:text-5xl font-display font-bold tracking-tight mb-5">{active.title}</h3>
+                <p className="text-sm font-bold uppercase tracking-widest text-accent-start dark:text-marcy-skin/70 mb-3">My journey</p>
+                <h3 className={`text-3xl md:text-5xl font-display font-bold tracking-tight mb-5 ${onSection ? 'text-marcy-skin' : 'title-text'}`}>{active.title}</h3>
                 <p className="text-lg text-ink/65 dark:text-slate-300 leading-relaxed md:ml-auto max-w-xl">
                   {active.body}
                 </p>
               </div>
 
               <div className="relative flex justify-center md:justify-start">
-                <div className="absolute top-1/2 left-1/2 md:left-28 -translate-x-1/2 -translate-y-1/2 w-64 h-64 md:w-80 md:h-80 rounded-full bg-accent-start/10 blur-3xl" />
-                <div className="relative w-64 h-64 md:w-80 md:h-80 rounded-full overflow-hidden border-8 border-white/80 dark:border-slate-800/80 shadow-2xl bg-white/40 dark:bg-slate-900/40">
+                <div className="absolute top-1/2 left-1/2 md:left-28 -translate-x-1/2 -translate-y-1/2 w-64 h-64 md:w-80 md:h-80 rounded-full bg-accent-start/10 dark:bg-marcy-red/25 blur-3xl" />
+                <div className="relative w-64 h-64 md:w-80 md:h-80 rounded-full overflow-hidden border-8 border-white/80 dark:border-marcy-red shadow-2xl bg-white/40 dark:bg-slate-900/40">
                   <img
                     src={active.image}
                     alt={`${active.year} ${active.title}`}
@@ -484,21 +901,52 @@ const Education = () => {
   ];
   const [activeIndex, setActiveIndex] = useState(education.length - 1);
   const active = education[activeIndex];
+  // Gunter-themed while current: cream belly backdrop, navy lettering, and the
+  // active school shown as a black graduation-gown card with gold trim (gunter: styles).
+  const onSection = useSectionActive('education');
 
   return (
-    <section id="education" className="scroll-mt-24 py-32 px-6">
-      <div className="max-w-7xl mx-auto">
+    <section
+      id="education"
+      className={`relative overflow-hidden scroll-mt-24 py-32 px-6 transition-colors duration-700 ${onSection ? 'gunter bg-gunter-belly' : 'bg-transparent'}`}
+    >
+      <SectionBackdrop show={onSection}>
+        {/* Snowy mountain scene, dimmed and faded at the edges like the hero background */}
+        <img
+          src="/gunter-bg.webp"
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover opacity-35 select-none"
+          style={{
+            maskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)'
+          }}
+        />
+      </SectionBackdrop>
+      <div className="relative max-w-7xl mx-auto">
         <FadeIn>
-          <div className="mb-16 md:mb-24">
-            <p className="text-sm font-bold uppercase tracking-widest text-accent-start mb-4">Background</p>
-            <h2 className="text-5xl md:text-7xl font-display font-bold tracking-tighter">
-              Education.
-            </h2>
+          <div className="mb-16 md:mb-24 flex items-end justify-between gap-6">
+            <div>
+              <p className="text-sm font-bold uppercase tracking-widest text-accent-start gunter:text-gunter-navy transition-colors mb-4">Background</p>
+              <h2 className={`text-5xl md:text-7xl font-display font-bold tracking-tighter ${onSection ? 'text-gunter-navy' : 'title-text'}`}>
+                Education.
+              </h2>
+            </div>
+            {/* Gunter, graduated — gold trim matches the section's Jake-yellow */}
+            <AnimatedAsset
+              src="/gunter.webp"
+              alt="Gunter the penguin in a graduation cap and gown"
+              width={626}
+              height={700}
+              animate={{ rotate: [0, -4, 0, 4, 0], y: [0, -6, 0] }}
+              transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}
+              className="w-28 md:w-44 h-auto shrink-0 select-none origin-bottom drop-shadow-[6px_6px_0_rgba(17,17,17,0.2)]"
+              draggable={false}
+            />
           </div>
         </FadeIn>
 
         <div className="relative">
-          <div className="hidden md:block absolute left-0 right-0 top-6 border-t-2 border-dashed border-black/25 dark:border-white/25" />
+          <div className="hidden md:block absolute left-0 right-0 top-6 border-t-2 border-dashed border-black/25 gunter:border-gunter-navy/30" />
 
           <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-6 mb-14">
             {education.map((item, index) => (
@@ -509,10 +957,10 @@ const Education = () => {
                 className={`group flex flex-col items-center text-center gap-3 transition-opacity ${index === activeIndex ? 'opacity-100' : 'opacity-45 hover:opacity-80'}`}
                 aria-label={`Show ${item.years} education milestone`}
               >
-                <span className={`w-10 h-10 md:w-12 md:h-12 rounded-full overflow-hidden bg-white p-1.5 border-4 transition-colors ${index === activeIndex ? 'border-accent-start shadow-lg shadow-accent-start/30' : 'border-black/10 dark:border-white/20'}`}>
+                <span className={`w-10 h-10 md:w-12 md:h-12 rounded-full overflow-hidden bg-white p-1.5 border-4 transition-colors ${index === activeIndex ? 'border-accent-start shadow-lg shadow-accent-start/30 gunter:border-gunter-gold gunter:shadow-gunter-gold/40' : 'border-black/10 dark:border-white/20'}`}>
                   <img src={item.logo} alt={`${item.institution} logo`} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                 </span>
-                <span className={`text-sm md:text-base font-bold uppercase tracking-widest transition-colors ${index === activeIndex ? 'text-ink dark:text-white' : 'text-ink/50 dark:text-white/50'}`}>
+                <span className={`text-sm md:text-base font-bold uppercase tracking-widest transition-colors ${index === activeIndex ? 'text-ink gunter:text-gunter-navy' : 'text-ink/50 gunter:text-gunter-navy/50'}`}>
                   {item.years}
                 </span>
               </button>
@@ -526,19 +974,19 @@ const Education = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -24 }}
               transition={{ duration: 0.45, ease: [0.21, 0.47, 0.32, 0.98] }}
-              className="text-center max-w-2xl mx-auto"
+              className={`text-center max-w-2xl mx-auto transition-colors duration-500 ${onSection ? 'rounded-[2rem] bg-gunter-gown border-4 border-gunter-gold p-8 md:p-12 text-gunter-belly shadow-[8px_8px_0_var(--color-gunter-navy)]' : ''}`}
             >
               <div className="w-20 h-20 md:w-24 md:h-24 mx-auto mb-6 rounded-full bg-white p-3 shadow-xl border border-black/5">
                 <img src={active.logo} alt={`${active.institution} logo`} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
               </div>
-              <p className="text-sm font-bold uppercase tracking-widest text-accent-start mb-3">{active.title}</p>
-              <h3 className="text-3xl md:text-5xl font-display font-bold tracking-tight mb-5">{active.institution}</h3>
-              <p className="text-lg text-ink/65 dark:text-slate-300 leading-relaxed mb-6">{active.body}</p>
+              <p className="text-sm font-bold uppercase tracking-widest text-accent-start gunter:text-gunter-gold transition-colors mb-3">{active.title}</p>
+              <h3 className={`text-3xl md:text-5xl font-display font-bold tracking-tight mb-5 ${onSection ? 'text-gunter-belly' : 'title-text'}`}>{active.institution}</h3>
+              <p className="text-lg text-ink/65 gunter:text-gunter-belly/80 leading-relaxed mb-6">{active.body}</p>
               <a
                 href={active.link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 font-bold uppercase tracking-widest text-sm hover:text-accent-start transition-colors"
+                className="inline-flex items-center gap-2 font-bold uppercase tracking-widest text-sm hover:text-accent-start gunter:text-gunter-gold gunter:hover:text-gunter-belly transition-colors"
               >
                 Visit <ArrowUpRight size={18} />
               </a>
@@ -550,7 +998,35 @@ const Education = () => {
   );
 };
 
+// Scroll-expand intro that sits just before the Portfolio section: the photo
+// grows from a framed card to full screen as you scroll, then hands off.
+const PortfolioIntro = () => (
+  <ScrollExpand
+    useWindowScroll
+    src="/things-built.webp"
+    alt="The Adventure Time cast celebrating across the Land of Ooo"
+    title="Things I've Built"
+    scrollHint="Scroll to open the portfolio"
+    startWidth={46}
+    startHeight={56}
+    startRadius={32}
+    mediaZoom={1.3}
+    scrollDistance={1.1}
+    holdDistance={0.3}
+    overlayScrim={0.55}
+    className="font-display"
+  >
+    <p className="font-sans text-xs md:text-sm font-bold uppercase tracking-[0.3em] text-pb-skin bg-pb-ink/75 backdrop-blur-sm rounded-full px-5 py-2 mb-5">Selected work</p>
+    <h2 className="pb-outline text-5xl md:text-8xl font-bold tracking-tighter text-white">
+      Latest <span className="text-pb-pink">Portfolio.</span>
+    </h2>
+  </ScrollExpand>
+);
+
+// Princess Bubblegum-themed while current: candy-pink lab backdrop, magenta
+// lettering, and a bento grid — one featured project plus five supporting ones.
 const Portfolio = () => {
+  const onSection = useSectionActive('portfolio');
   const projects = [
     { title: "Before you Dig Australia", category: "Mining Documentation Automation System", img: "/BYDA.png" },
     { title: "PNPh Tourna Website", category: "Tournament Website", img: "/TOUR.png" },
@@ -561,49 +1037,249 @@ const Portfolio = () => {
   ];
 
   return (
-    <section id="portfolio" className="py-32 px-6">
-      <div className="max-w-7xl mx-auto">
+    <section id="portfolio" className="relative py-32 px-6 overflow-hidden">
+      <SectionBackdrop show={onSection} className="bg-linear-to-b from-pb-skin via-[#FEE6F7] to-pb-skin">
+        {/* Candy Kingdom scene, dimmed and faded at the edges like the hero background */}
+        <img
+          src="/bubblegum-bg.webp"
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover opacity-35 select-none"
+          style={{
+            maskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)'
+          }}
+        />
+      </SectionBackdrop>
+
+      <div className="relative max-w-7xl mx-auto">
         <FadeIn>
-          <div className="flex justify-between items-end mb-20">
-            <h2 className="text-5xl md:text-7xl font-display font-bold tracking-tighter">Latest<br />Portfolio.</h2>
-            <button className="hidden md:flex items-center gap-2 font-bold uppercase tracking-widest text-sm hover:text-accent-start transition-colors">
-              View All Projects <ArrowUpRight size={18} />
-            </button>
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
+            <div className="max-w-2xl">
+              <p className="text-sm font-bold uppercase tracking-widest text-pb-magenta mb-4">Candy Kingdom Lab</p>
+              <h2 className="text-5xl md:text-7xl font-display font-bold tracking-tighter text-pb-magenta">
+                Latest<br /><span className="pb-outline text-pb-pink">Portfolio.</span>
+              </h2>
+              <p className="mt-6 text-lg text-pb-ink/70 leading-relaxed">
+                {projects.length} projects, from AI agents and automation systems to websites and e-commerce.
+              </p>
+              <button className="mt-8 inline-flex items-center gap-2 rounded-full border-[3px] border-pb-ink bg-pb-pink px-6 py-3 font-bold uppercase tracking-widest text-sm text-white shadow-[4px_4px_0_var(--color-pb-ink)] hover:shadow-[6px_6px_0_var(--color-pb-ink)] transition-shadow">
+                View All Projects <ArrowUpRight size={18} />
+              </button>
+            </div>
+            <AnimatedAsset
+              src="/bubblegum.webp"
+              alt="Princess Bubblegum holding BMO"
+              width={608}
+              height={1000}
+              animate={{ y: [0, -10, 0] }}
+              transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}
+              className="self-center md:self-end w-32 md:w-44 lg:w-52 h-auto shrink-0 select-none drop-shadow-[8px_8px_0_rgba(176,48,127,0.25)]"
+              draggable={false}
+            />
           </div>
         </FadeIn>
 
-        <div className="grid md:grid-cols-2 gap-12">
-          {projects.map((project, i) => (
-            <FadeIn key={i} delay={i * 0.1}>
-              <motion.div 
-              whileHover={{ y: -10 }}
-              className="group cursor-pointer"
-            >
-              <div className="relative aspect-[4/5] rounded-[2rem] overflow-hidden mb-6">
-                <img 
-                  src={project.img} 
-                  alt={project.title} 
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center scale-0 group-hover:scale-100 transition-transform duration-500">
-                    <ArrowUpRight className="text-ink" size={32} />
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 lg:auto-rows-[270px]">
+          {projects.map((project, i) => {
+            const featured = i === 0;
+            return (
+              <FadeIn
+                key={project.title}
+                delay={i * 0.08}
+                className={featured ? 'md:col-span-2 lg:row-span-2' : ''}
+              >
+                <div data-motion-card
+                className={`group relative h-full ${featured ? 'min-h-[420px]' : 'min-h-[300px] lg:min-h-0'} rounded-[2rem] overflow-hidden border-[3px] border-pb-ink bg-white cursor-pointer shadow-[6px_6px_0_var(--color-pb-magenta)] hover:shadow-[10px_10px_0_var(--color-pb-magenta)] transition-shadow duration-300`}>
+                  <img
+                    src={project.img}
+                    alt={project.title}
+                    className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute inset-0 bg-linear-to-t from-pb-ink/90 via-pb-ink/25 to-transparent" />
+
+                  <div className="absolute top-5 left-5 right-5 flex items-start justify-between gap-3">
+                    <span className="w-11 h-11 shrink-0 rounded-full bg-pb-crown border-[3px] border-pb-ink flex items-center justify-center font-bold text-sm text-pb-ink">
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                    <span className="px-3 py-1.5 rounded-full bg-white/90 backdrop-blur-sm text-[10px] md:text-xs font-bold uppercase tracking-widest text-pb-magenta text-right">
+                      {project.category}
+                    </span>
+                  </div>
+
+                  <div className="absolute inset-x-0 bottom-0 p-6 md:p-7 flex items-end justify-between gap-4">
+                    <div>
+                      {featured && <p className="text-xs font-bold uppercase tracking-widest text-pb-skin mb-2">Featured project</p>}
+                      <h3 className={`font-display font-bold leading-tight text-white ${featured ? 'text-3xl md:text-5xl' : 'text-2xl'}`}>{project.title}</h3>
+                    </div>
+                    <span className="w-12 h-12 shrink-0 rounded-full bg-pb-pink border-[3px] border-pb-ink text-white flex items-center justify-center transition-transform duration-300 group-hover:rotate-45">
+                      <ArrowUpRight size={20} />
+                    </span>
                   </div>
                 </div>
-                <div className="absolute top-6 left-6">
-                  <span className="px-4 py-2 bg-white/90 dark:bg-slate-800/90 dark:text-white backdrop-blur-sm rounded-full text-xs font-bold uppercase tracking-widest shadow-sm">
-                    {project.category}
+              </FadeIn>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+// Tools grouped by what they're for; each group takes one of Lady Rainicorn's
+// rainbow stripes. (`stripe` = accent colour var, `Icon` = the group's tile icon.)
+const toolGroups: { title: string; stripe: string; Icon: typeof Code2; tools: { name: string; icon: string }[] }[] = [
+  {
+    title: "Languages", stripe: "var(--color-rain-red)", Icon: Code2,
+    tools: [
+      { name: "HTML", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/html5/html5-original.svg" },
+      { name: "CSS", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/css3/css3-original.svg" },
+      { name: "JavaScript", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/javascript/javascript-original.svg" },
+      { name: "TypeScript", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/typescript/typescript-original.svg" },
+      { name: "PHP", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/php/php-original.svg" },
+      { name: "Java", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg" },
+      { name: "Python", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg" },
+      { name: "C++", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/cplusplus/cplusplus-original.svg" },
+      { name: "C", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/c/c-original.svg" }
+    ]
+  },
+  {
+    title: "Frameworks & Libraries", stripe: "var(--color-rain-gold)", Icon: Layers,
+    tools: [
+      { name: "React", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/react/react-original.svg" },
+      { name: "Vue", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/vuejs/vuejs-original.svg" },
+      { name: "Node.js", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nodejs/nodejs-original.svg" },
+      { name: "Laravel", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/laravel/laravel-original.svg" },
+      { name: "Tailwind", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/tailwindcss/tailwindcss-original.svg" },
+      { name: "FastAPI", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/fastapi/fastapi-original.svg" }
+    ]
+  },
+  {
+    title: "Databases & Servers", stripe: "var(--color-rain-green)", Icon: Database,
+    tools: [
+      { name: "MongoDB", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/mongodb/mongodb-original.svg" },
+      { name: "MySQL", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/mysql/mysql-original.svg" },
+      { name: "Oracle", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/oracle/oracle-original.svg" },
+      { name: "Supabase", icon: "https://cdn.simpleicons.org/supabase/3ECF8E" },
+      { name: "Apache Lounge", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/apache/apache-original.svg" }
+    ]
+  },
+  {
+    title: "AI & Agents", stripe: "var(--color-rain-blue)", Icon: Bot,
+    tools: [
+      { name: "Claude", icon: "https://cdn.simpleicons.org/claude/D97757" },
+      { name: "OpenAI", icon: "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/openai.svg" },
+      { name: "Hermes Agent", icon: "https://hermes-agent.nousresearch.com/img/desktop/badge.webp" },
+      { name: "Composio", icon: "https://composio.dev/favicon.ico" },
+      { name: "Sixth AI", icon: "https://trysixth.com/favicon.ico" }
+    ]
+  },
+  {
+    title: "Design", stripe: "var(--color-rain-purple)", Icon: Palette,
+    tools: [
+      { name: "Figma", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/figma/figma-original.svg" },
+      { name: "Canva", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/canva/canva-original.svg" },
+      { name: "Photoshop", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/photoshop/photoshop-original.svg" },
+      { name: "Illustrator", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/illustrator/illustrator-original.svg" },
+      { name: "Affinity", icon: "/affinity-logotype.svg" }
+    ]
+  },
+  {
+    title: "Dev Tools & OS", stripe: "var(--color-rain-pink-deep)", Icon: Wrench,
+    tools: [
+      { name: "Git", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/git/git-original.svg" },
+      { name: "GitHub", icon: "https://cdn.simpleicons.org/github/181717" },
+      { name: "GitLab", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/gitlab/gitlab-original.svg" },
+      { name: "Ubuntu", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/ubuntu/ubuntu-original.svg" },
+      { name: "Linux", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/linux/linux-original.svg" },
+      { name: "Obsidian", icon: "https://cdn.simpleicons.org/obsidian/7C3AED" },
+      { name: "Notepad++", icon: "https://cdn.simpleicons.org/notepadplusplus/90E59A" }
+    ]
+  }
+];
+
+const rainbowStripes = ['--color-rain-red', '--color-rain-gold', '--color-rain-mane', '--color-rain-green', '--color-rain-teal', '--color-rain-blue', '--color-rain-purple', '--color-rain-pink'];
+
+// Lady Rainicorn-themed while current: blush-pink backdrop with a rainbow band,
+// rainbow lettering, and tools sorted into six colour-coded cards.
+const ToolsSection = () => {
+  const onSection = useSectionActive('tools');
+  const total = toolGroups.reduce((n, g) => n + g.tools.length, 0);
+
+  return (
+    <section id="tools" className="relative overflow-hidden py-28 px-6">
+      <SectionBackdrop show={onSection} className="bg-linear-to-b from-rain-blush via-white to-[#EEF3FF]">
+        {/* rainbow band across the top */}
+        <div className="absolute inset-x-0 top-0 flex h-2">
+          {rainbowStripes.map((v) => <span key={v} className="flex-1" style={{ background: `var(${v})` }} />)}
+        </div>
+        {/* Tree Fort couch scene, dimmed and faded at the edges like the hero background */}
+        <img
+          src="/tools-bg.webp"
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover opacity-20 select-none"
+          style={{
+            maskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)'
+          }}
+        />
+      </SectionBackdrop>
+
+      <div className="relative max-w-7xl mx-auto">
+        <FadeIn>
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-14">
+            <div className="max-w-2xl">
+              <p className={`text-sm font-bold uppercase tracking-widest mb-4 transition-colors ${onSection ? 'text-rain-purple' : 'text-accent-start'}`}>My toolbox</p>
+              <h2 className={`text-5xl md:text-7xl font-display font-bold tracking-tighter ${onSection ? 'rainbow-text' : 'title-text'}`}>
+                Tools &amp;<br />Technologies.
+              </h2>
+              <p className="mt-5 text-lg font-medium text-ink/75">
+                {total} tools across {toolGroups.length} areas, from code and databases to AI agents and design.
+              </p>
+            </div>
+            <AnimatedAsset
+              src="/rainicorn.webp"
+              alt="Lady Rainicorn surrounded by coding tool icons"
+              width={899}
+              height={900}
+              animate={{ y: [0, -12, 0], rotate: [-2, 2, -2] }}
+              transition={{ duration: 4.2, repeat: Infinity, ease: "easeInOut" }}
+              className="self-center md:self-end w-40 md:w-56 lg:w-64 h-auto shrink-0 select-none drop-shadow-[0_12px_24px_rgba(120,96,240,0.25)]"
+              draggable={false}
+            />
+          </div>
+        </FadeIn>
+
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {toolGroups.map((group, gi) => (
+            <FadeIn key={group.title} delay={gi * 0.08}>
+              <div
+                data-motion-card
+                className="h-full rounded-3xl border-2 bg-white/85 backdrop-blur-md p-6 shadow-sm transition-shadow hover:shadow-lg overflow-hidden relative"
+                style={{ borderColor: `color-mix(in oklab, ${group.stripe} 45%, transparent)` }}
+              >
+                <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1.5" style={{ background: group.stripe }} />
+                <div className="flex items-center gap-3 mb-5">
+                  <span className="w-11 h-11 rounded-xl flex items-center justify-center text-white shadow-sm" style={{ background: group.stripe }}>
+                    <group.Icon size={22} strokeWidth={2.4} />
                   </span>
+                  <div>
+                    <h3 className="font-display font-bold text-xl leading-tight text-ink">{group.title}</h3>
+                    <p className="text-xs font-bold uppercase tracking-widest text-ink/40">{group.tools.length} tools</p>
+                  </div>
                 </div>
+                <ul className="flex flex-wrap gap-2">
+                  {group.tools.map((tool) => (
+                    <li
+                      key={tool.name}
+                      className="motion-tool flex items-center gap-2 rounded-full border border-black/10 bg-white pl-2 pr-3 py-1.5 text-sm font-medium text-ink shadow-[0_1px_0_rgba(0,0,0,0.04)] transition-transform duration-200 hover:-translate-y-0.5"
+                    >
+                      <img src={tool.icon} alt="" loading="lazy" className="w-5 h-5 object-contain" referrerPolicy="no-referrer" />
+                      {tool.name}
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <div className="flex justify-between items-center">
-                <h3 className="text-3xl font-display font-bold">{project.title}</h3>
-                <div className="w-12 h-12 rounded-full border border-black/10 dark:border-white/10 flex items-center justify-center group-hover:bg-ink dark:group-hover:bg-white group-hover:text-white dark:group-hover:text-ink transition-colors">
-                  <ArrowUpRight size={20} />
-                </div>
-              </div>
-              </motion.div>
             </FadeIn>
           ))}
         </div>
@@ -612,88 +1288,25 @@ const Portfolio = () => {
   );
 };
 
-const SkillsTicker = () => {
-  const skills = [
-    { name: "HTML", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/html5/html5-original.svg" },
-    { name: "CSS", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/css3/css3-original.svg" },
-    { name: "PHP", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/php/php-original.svg" },
-    { name: "JAVA", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg" },
-    { name: "REACT", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/react/react-original.svg" },
-    { name: "NODE.JS", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nodejs/nodejs-original.svg" },
-    { name: "TYPESCRIPT", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/typescript/typescript-original.svg" },
-    { name: "LARAVEL", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/laravel/laravel-original.svg" },
-    { name: "TAILWIND", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/tailwindcss/tailwindcss-original.svg" },
-    { name: "MONGODB", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/mongodb/mongodb-original.svg" },
-    { name: "MYSQL", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/mysql/mysql-original.svg" },
-    { name: "ORACLE", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/oracle/oracle-original.svg" },
-    { name: "FIGMA", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/figma/figma-original.svg" },
-    { name: "CANVA", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/canva/canva-original.svg" },
-    { name: "PHOTOSHOP", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/photoshop/photoshop-original.svg" },
-    { name: "AFFINITY", icon: "/affinity-logotype.svg" },
-    { name: "ILLUSTRATOR", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/illustrator/illustrator-original.svg" },
-    { name: "HERMES AGENT", icon: "https://hermes-agent.nousresearch.com/img/desktop/badge.webp" },
-    { name: "PYTHON", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg" },
-    { name: "OBSIDIAN", icon: "https://cdn.simpleicons.org/obsidian/7C3AED" },
-    { name: "SUPABASE", icon: "https://cdn.simpleicons.org/supabase/3ECF8E" },
-    { name: "JAVASCRIPT", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/javascript/javascript-original.svg" },
-    { name: "C++", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/cplusplus/cplusplus-original.svg" },
-    { name: "C", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/c/c-original.svg" },
-    { name: "CLAUDE", icon: "https://cdn.simpleicons.org/claude/D97757" },
-    { name: "OPENAI", icon: "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/openai.svg" },
-    { name: "APACHE LOUNGE", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/apache/apache-original.svg" },
-    { name: "VUE", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/vuejs/vuejs-original.svg" },
-    { name: "GITHUB", icon: "https://cdn.simpleicons.org/github/181717" },
-    { name: "GITLAB", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/gitlab/gitlab-original.svg" },
-    { name: "GIT", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/git/git-original.svg" },
-    { name: "UBUNTU LINUX", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/ubuntu/ubuntu-original.svg" },
-    { name: "LINUX", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/linux/linux-original.svg" },
-    { name: "FASTAPI", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/fastapi/fastapi-original.svg" },
-    { name: "COMPOSIO", icon: "https://composio.dev/favicon.ico" },
-    { name: "NOTEPAD++", icon: "https://cdn.simpleicons.org/notepadplusplus/90E59A" },
-    { name: "SIXTH AI", icon: "https://trysixth.com/favicon.ico" }
-  ];
-
-  // Two arced rows travelling in opposite directions; split the list in half.
-  const half = Math.ceil(skills.length / 2);
-  const toSlides = (list: typeof skills) =>
-    list.map(({ name, icon }) => ({ image: { src: icon, alt: `${name} logo` } }));
-
-  return (
-    <section className="py-12">
-      <h2 className="text-center text-xs md:text-sm font-bold uppercase tracking-[0.25em] text-ink/40 dark:text-slate-500 mb-4">
-        Tools &amp; Technologies
-      </h2>
-      <div className="h-[400px] md:h-[500px]">
-        <EyeTicker
-          topImages={toSlides(skills.slice(0, half))}
-          bottomImages={toSlides(skills.slice(half))}
-          cardWidth={100}
-          cardHeight={150}
-          rowGap={120}
-          fit="contain"
-          rounded={3}
-          speed={12}
-          // Same surface as the review cards — see --card-surface in index.css.
-          cardStyle={{
-            background: 'var(--card-surface)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            border: '1px solid var(--card-border)',
-            boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)'
-          }}
-          cardPadding={14}
-        />
-      </div>
-    </section>
-  );
-};
-
 const faqGradients = [
-  'linear-gradient(160deg, #6366F1 0%, #8B5CF6 100%)',
-  'linear-gradient(160deg, #F97316 0%, #EF4444 100%)',
-  'linear-gradient(160deg, #10B981 0%, #06B6D4 100%)',
-  'linear-gradient(160deg, #EC4899 0%, #F43F5E 100%)'
+  'linear-gradient(160deg, var(--color-accent-start) 0%, var(--color-secondary) 100%)',
+  'linear-gradient(160deg, var(--color-highlight) 0%, var(--color-accent-end) 100%)',
+  'linear-gradient(160deg, var(--color-accent-end) 0%, var(--color-tertiary) 100%)',
+  'linear-gradient(160deg, var(--color-secondary) 0%, var(--color-highlight) 100%)'
 ];
+// Lumpy Space Princess versions — lavender body, blush, star yellow.
+const faqGradientsLsp = [
+  'linear-gradient(160deg, var(--color-lsp-body) 0%, var(--color-lsp-blush) 100%)',
+  'linear-gradient(160deg, var(--color-lsp-star) 0%, var(--color-lsp-body) 100%)',
+  'linear-gradient(160deg, var(--color-lsp-blush) 0%, var(--color-lsp-mist) 100%)',
+  'linear-gradient(160deg, var(--color-lsp-mist) 0%, var(--color-lsp-body) 100%)'
+];
+
+// Twinkling star positions for the FAQ backdrop (left %, top %, size px, delay s).
+const lspStars = [
+  [6, 18, 18, 0], [14, 70, 12, 1.2], [24, 35, 10, 0.6], [78, 22, 16, 0.3],
+  [88, 62, 20, 1.6], [94, 30, 10, 0.9], [60, 85, 12, 2.1], [40, 12, 9, 1.8]
+] as const;
 
 // Fanned card carousel — center card active, side cards splay out and rotate,
 // styled after the "Daily Energy" Framer demo (decisive-reassurance-155626.framer.app).
@@ -732,7 +1345,7 @@ const FaqFanCard = ({
       }}
       transition={{ type: 'spring', stiffness: 260, damping: 28 }}
     >
-      <div className="relative h-full p-6 md:p-7 flex flex-col text-white">
+      <div className="relative h-full p-6 md:p-7 flex flex-col text-ink">
         <span className="self-end shrink-0 px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm text-[10px] font-bold uppercase tracking-widest">
           FAQ
         </span>
@@ -747,7 +1360,7 @@ const FaqFanCard = ({
                 transition={{ duration: 0.3, delay: 0.15 }}
                 className="flex-1 min-h-0 overflow-y-auto no-scrollbar pr-1"
               >
-                <p className="text-sm md:text-base leading-relaxed text-white/90">{faq.a}</p>
+                <p className="text-sm md:text-base leading-relaxed text-ink/90">{faq.a}</p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -770,13 +1383,53 @@ const FAQ = () => {
   const [activeIndex, setActiveIndex] = useState(Math.floor((faqs.length - 1) / 2));
   const goToPrevious = () => setActiveIndex((activeIndex - 1 + faqs.length) % faqs.length);
   const goToNext = () => setActiveIndex((activeIndex + 1) % faqs.length);
+  // Lumpy Space Princess-themed while current: lavender mist with twinkling
+  // stars, purple lettering with a star-yellow "Questions.", LSP card gradients.
+  const onSection = useSectionActive('faq');
+  const gradients = onSection ? faqGradientsLsp : faqGradients;
 
   return (
-    <section className="py-32 px-6 overflow-hidden">
-      <div className="max-w-6xl mx-auto">
+    <section id="faq" className="relative py-32 px-6 overflow-hidden">
+      <SectionBackdrop show={onSection} className="bg-linear-to-b from-lsp-mist via-[#E4D2F3] to-lsp-mist">
+        {/* Lumpy Space scene, dimmed and faded at the edges like the hero background */}
+        <img
+          src="/faq-bg.webp"
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover opacity-35 select-none"
+          style={{
+            maskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)'
+          }}
+        />
+        {lspStars.map(([left, top, size, delay], i) => (
+          <span
+            key={i}
+            className="motion-sparkle absolute bg-lsp-star [clip-path:polygon(50%_0,61%_35%,98%_35%,68%_57%,79%_91%,50%_70%,21%_91%,32%_57%,2%_35%,39%_35%)]"
+            style={{ left: `${left}%`, top: `${top}%`, width: size, height: size, animationDelay: `${delay}s` }}
+          />
+        ))}
+      </SectionBackdrop>
+
+      <div className="relative max-w-6xl mx-auto">
         <FadeIn>
-          <h2 className="text-4xl md:text-6xl font-display font-bold text-center mb-4 tracking-tighter">Frequently Asked<br />Questions.</h2>
-          <p className="text-center text-ink/60 dark:text-slate-400 mb-16 md:mb-20">Tap a card to flip through the answers.</p>
+          <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-10 mb-16 md:mb-20">
+            <div className="text-center md:text-left">
+              <h2 className={`text-4xl md:text-6xl font-display font-bold mb-4 tracking-tighter ${onSection ? 'text-lsp-deep' : 'title-text'}`}>
+                Frequently Asked<br /><span className={onSection ? 'lsp-outline text-lsp-star' : ''}>Questions.</span>
+              </h2>
+              <p className={`inline-block transition-colors duration-700 ${onSection ? 'text-lsp-deep font-medium bg-lsp-mist/85 backdrop-blur-sm rounded-full px-4 py-1.5' : 'text-ink/60'}`}>Tap a card to flip through the answers.</p>
+            </div>
+            <AnimatedAsset
+              src="/lsp.webp"
+              alt="Lumpy Space Princess thinking with a finger on her lip"
+              width={702}
+              height={700}
+              animate={{ y: [0, -12, 0], rotate: [-2, 2, -2] }}
+              transition={{ duration: 3.8, repeat: Infinity, ease: "easeInOut" }}
+              className="w-28 md:w-40 h-auto shrink-0 select-none drop-shadow-[6px_6px_0_rgba(107,63,143,0.25)]"
+              draggable={false}
+            />
+          </div>
         </FadeIn>
 
         <div className="relative h-[400px] md:h-[460px] mb-12">
@@ -787,7 +1440,7 @@ const FAQ = () => {
               offset={index - activeIndex}
               isActive={index === activeIndex}
               onSelect={() => setActiveIndex(index)}
-              gradient={faqGradients[index % faqGradients.length]}
+              gradient={gradients[index % gradients.length]}
             />
           ))}
         </div>
@@ -796,7 +1449,7 @@ const FAQ = () => {
           <button
             type="button"
             onClick={goToPrevious}
-            className="w-10 h-10 md:w-12 md:h-12 rounded-full border border-black/20 dark:border-white/20 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md flex items-center justify-center hover:border-accent-start hover:text-accent-start transition-colors"
+            className={`w-10 h-10 md:w-12 md:h-12 rounded-full border bg-white/50 backdrop-blur-md flex items-center justify-center transition-colors ${onSection ? 'border-lsp-deep/40 text-lsp-deep hover:bg-lsp-deep hover:text-white' : 'border-black/20 hover:border-accent-start hover:text-accent-start'}`}
             aria-label="Previous question"
           >
             <ChevronLeft size={20} />
@@ -807,7 +1460,7 @@ const FAQ = () => {
                 key={index}
                 type="button"
                 onClick={() => setActiveIndex(index)}
-                className={`w-2.5 h-2.5 rounded-full transition-colors ${index === activeIndex ? 'bg-accent-start' : 'bg-black/20 dark:bg-white/20'}`}
+                className={`w-2.5 h-2.5 rounded-full transition-colors ${index === activeIndex ? (onSection ? 'bg-lsp-deep' : 'bg-accent-start') : 'bg-black/20'}`}
                 aria-label={`Show question ${index + 1}`}
               />
             ))}
@@ -815,7 +1468,7 @@ const FAQ = () => {
           <button
             type="button"
             onClick={goToNext}
-            className="w-10 h-10 md:w-12 md:h-12 rounded-full border border-black/20 dark:border-white/20 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md flex items-center justify-center hover:border-accent-start hover:text-accent-start transition-colors"
+            className={`w-10 h-10 md:w-12 md:h-12 rounded-full border bg-white/50 backdrop-blur-md flex items-center justify-center transition-colors ${onSection ? 'border-lsp-deep/40 text-lsp-deep hover:bg-lsp-deep hover:text-white' : 'border-black/20 hover:border-accent-start hover:text-accent-start'}`}
             aria-label="Next question"
           >
             <ChevronRight size={20} />
@@ -826,122 +1479,176 @@ const FAQ = () => {
   );
 };
 
-const Contact = () => (
-  <section id="contact" className="py-32 px-6 relative overflow-hidden">
-    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[25vw] font-display font-black text-black/[0.03] dark:text-white/[0.02] select-none pointer-events-none uppercase tracking-tighter transition-colors">
-      Contact
-    </div>
+// Falling snow positions for the Contact backdrop (left %, size px, duration s, delay s, drift px).
+const snowflakes = [
+  [3, 6, 11, 0, 20], [10, 4, 14, 3, -15], [18, 8, 12, 6, 30], [26, 5, 16, 1.5, -25],
+  [34, 3, 13, 4.5, 10], [42, 7, 15, 2, -30], [50, 4, 12, 7, 25], [58, 6, 17, 0.5, -20],
+  [66, 3, 14, 5, 15], [74, 8, 13, 2.5, -10], [82, 5, 16, 6.5, 30], [90, 4, 12, 1, -25],
+  [96, 6, 15, 3.5, 12]
+] as const;
+
+// Ice King's royal mail while current: royal-blue backdrop with the Ice Kingdom
+// scene and falling snow, frost lettering, and the form in a frosted-ice card
+// under a gold crown. `dark` switches the section's dark: styles on.
+const Contact = () => {
+  const onSection = useSectionActive('contact');
+  const field = "w-full rounded-2xl px-5 py-4 outline-none transition-shadow bg-black/5 focus:ring-2 focus:ring-accent-start dark:bg-white/10 dark:text-white dark:placeholder:text-ik-skin/50 dark:border dark:border-ik-skin/25 dark:focus:ring-ik-crown";
+  const label = "text-xs font-bold uppercase tracking-widest text-ink/40 dark:text-ik-skin";
+
+  return (
+  <section id="contact" className={`py-32 px-6 relative overflow-hidden transition-colors duration-700 ${onSection ? 'dark text-white' : ''}`}>
+    <SectionBackdrop show={onSection} className="bg-linear-to-b from-ik-navy via-ik-robe/80 to-ik-navy">
+      {/* Ice Kingdom scene, dimmed and faded at the edges like the hero background */}
+      <img
+        src="/contact-bg.webp"
+        alt=""
+        className="absolute inset-0 w-full h-full object-cover opacity-35 select-none"
+        style={{
+          maskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)'
+        }}
+      />
+      {snowflakes.map(([left, size, dur, delay, drift], i) => (
+        <span
+          key={i}
+          className="snowflake"
+          style={{ left: `${left}%`, width: size, height: size, '--dur': `${dur}s`, '--delay': `${delay}s`, '--drift': `${drift}px` } as React.CSSProperties}
+        />
+      ))}
+    </SectionBackdrop>
 
     <div className="max-w-7xl mx-auto relative z-10">
-      <div className="grid md:grid-cols-2 gap-12 md:gap-20 items-center">
-        <FadeIn direction="right" className="relative">
-          <div className="absolute inset-0 bg-accent-start blur-3xl opacity-20 rounded-full" />
-          <div className="relative aspect-square rounded-3xl md:rounded-[3rem] overflow-hidden border-4 md:border-8 border-white/50 dark:border-slate-800/50 shadow-2xl transition-colors">
-            <img 
-              src="https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3NW0zeGhkM3I3MGJmMzczYXN1bHUxa2ZzMmRnanhxMm5pN3gxZmV3cyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/J2Cn43dJvkMjn6xICf/giphy.gif" 
-              alt="Contact" 
-              className="w-full h-full object-cover"
-              referrerPolicy="no-referrer"
+      <div className="grid lg:grid-cols-[0.95fr_1.05fr] gap-14 lg:gap-16 items-center">
+        {/* Left: invitation, contact details, Ice King with his letter */}
+        <FadeIn direction="right" className="min-w-0">
+          <p className="text-sm font-bold uppercase tracking-widest text-accent-start dark:text-ik-crown mb-4">Royal mail</p>
+          <h2 className={`text-5xl md:text-6xl font-display font-bold tracking-tighter leading-[0.95] ${onSection ? 'frost-text' : 'title-text'}`}>
+            Send me an<br />email now!
+          </h2>
+          <p className="mt-6 max-w-md text-lg leading-relaxed text-ink/60 dark:text-ik-skin/85">
+            Got a project, a question, or just want to say hi? Send a message and I'll get back to you.
+          </p>
+
+          <div className="mt-8 flex flex-col gap-3 max-w-md">
+            <a href="mailto:riel.engana@student.passerellesnumeriques.org" className="group flex items-center gap-4 rounded-2xl border px-4 py-3 transition-colors border-black/10 bg-white/60 hover:border-accent-start dark:border-ik-skin/25 dark:bg-white/10 dark:hover:border-ik-crown">
+              <span className="w-11 h-11 shrink-0 rounded-full flex items-center justify-center bg-accent-start/15 text-accent-start dark:bg-ik-crown dark:text-ik-navy"><Mail size={20} /></span>
+              <span className="min-w-0">
+                <span className="block text-xs font-bold uppercase tracking-widest text-ink/40 dark:text-ik-skin/70">Email</span>
+                <span className="block truncate font-medium">riel.engana@student.passerellesnumeriques.org</span>
+              </span>
+            </a>
+            <a href="tel:09850254857" className="group flex items-center gap-4 rounded-2xl border px-4 py-3 transition-colors border-black/10 bg-white/60 hover:border-accent-start dark:border-ik-skin/25 dark:bg-white/10 dark:hover:border-ik-crown">
+              <span className="w-11 h-11 shrink-0 rounded-full flex items-center justify-center bg-accent-start/15 text-accent-start dark:bg-ik-crown dark:text-ik-navy"><Phone size={20} /></span>
+              <span>
+                <span className="block text-xs font-bold uppercase tracking-widest text-ink/40 dark:text-ik-skin/70">Phone</span>
+                <span className="block font-medium">0985 025 4857</span>
+              </span>
+            </a>
+          </div>
+
+          <div className="mt-10 flex items-end gap-5">
+            <AnimatedAsset
+              src="/ice-king.webp"
+              alt="Ice King waving a letter"
+              width={705}
+              height={900}
+              animate={{ y: [0, -10, 0], rotate: [-2, 2, -2] }}
+              transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}
+              className="w-36 md:w-48 h-auto shrink-0 select-none drop-shadow-[0_10px_24px_rgba(0,16,96,0.45)]"
+              draggable={false}
             />
+            {/* BMO on the line — framed like a pane of ice */}
+            <div className="relative w-36 md:w-44 aspect-[4/3] rounded-2xl overflow-hidden rotate-3 border-4 border-white/70 dark:border-ik-skin/70 shadow-xl">
+              <img src="/contact-bmo.gif" alt="BMO happily dancing" className="w-full h-full object-cover" />
+            </div>
           </div>
         </FadeIn>
-        
-        <FadeIn direction="left">
-          <div className="text-2xl font-display font-bold tracking-tighter mb-8">SEND ME AN EMAIL NOW!</div>
-          
-          <form 
-            action="https://formsubmit.co/rieljake.engana.24@usjr.edu.ph" 
-            method="POST"
-            className="space-y-6"
-          >
-            <input type="hidden" name="_subject" value="You have New Message from your client Jake!" />
-            <input type="hidden" name="_captcha" value="false" />
 
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-widest text-ink/40 dark:text-slate-500">
-                Full Name
-              </label>
-              <input 
-                type="text" 
-                name="name"
-                required
-                placeholder="Name"
-                className="w-full bg-black/5 dark:bg-white/10 dark:text-white rounded-2xl px-6 py-4 outline-none focus:ring-2 focus:ring-accent-start transition-shadow"
-              />
-            </div>
+        {/* Right: the form in a frosted-ice card under a gold crown */}
+        <FadeIn direction="left" className="min-w-0">
+          <div className="relative rounded-[2rem] border p-7 pt-12 md:p-10 md:pt-14 backdrop-blur-xl border-black/5 bg-white/70 shadow-xl dark:border-ik-skin/35 dark:bg-ik-navy/45 dark:shadow-[0_0_60px_rgba(184,238,251,0.18)]">
+            {/* crown badge */}
+            <svg viewBox="0 0 64 40" aria-hidden="true" className="absolute -top-7 left-1/2 -translate-x-1/2 w-20 h-auto drop-shadow-[0_4px_0_rgba(0,16,96,0.35)]">
+              <path d="M4 36 L4 12 L18 24 L32 4 L46 24 L60 12 L60 36 Z" fill="var(--color-ik-crown)" stroke="var(--color-ik-navy)" strokeWidth="3" strokeLinejoin="round" />
+              <circle cx="18" cy="29" r="3.5" fill="var(--color-ik-gem)" />
+              <circle cx="32" cy="27" r="4.5" fill="var(--color-ik-gem)" />
+              <circle cx="46" cy="29" r="3.5" fill="var(--color-ik-gem)" />
+            </svg>
 
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-widest text-ink/40 dark:text-slate-500">
-                Email
-              </label>
-              <input 
-                type="email" 
-                name="email"
-                required
-                placeholder="yourname@email.com"
-                className="w-full bg-black/5 dark:bg-white/10 dark:text-white rounded-2xl px-6 py-4 outline-none focus:ring-2 focus:ring-accent-start transition-shadow"
-              />
-            </div>
+            <form action="https://formsubmit.co/rieljake.engana.24@usjr.edu.ph" method="POST" className="space-y-5">
+              <input type="hidden" name="_subject" value="You have New Message from your client Jake!" />
+              <input type="hidden" name="_captcha" value="false" />
 
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-widest text-ink/40 dark:text-slate-500">
-                Message
-              </label>
-              <textarea 
-                name="message"
-                required
-                rows={4}
-                placeholder="Write your message..."
-                className="w-full bg-black/5 dark:bg-white/10 dark:text-white rounded-2xl px-6 py-4 outline-none focus:ring-2 focus:ring-accent-start resize-none transition-shadow"
-              />
-            </div>
+              <div className="grid md:grid-cols-2 gap-5">
+                <div className="space-y-2">
+                  <label htmlFor="contact-name" className={label}>Full Name</label>
+                  <input id="contact-name" type="text" name="name" required placeholder="Name" className={field} />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="contact-email" className={label}>Email</label>
+                  <input id="contact-email" type="email" name="email" required placeholder="yourname@email.com" className={field} />
+                </div>
+              </div>
 
-            <button
-              type="submit"
-              className="w-full gradient-bg text-white py-4 rounded-2xl font-bold hover:scale-[1.02] transition-transform"
-            >
-              Send Email
-            </button>
-          </form>
+              <div className="space-y-2">
+                <label htmlFor="contact-message" className={label}>Message</label>
+                <textarea id="contact-message" name="message" required rows={6} placeholder="Write your message..." className={`${field} resize-none`} />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl font-bold transition-transform hover:scale-[1.02] bg-linear-to-r from-accent-start to-accent-end text-ink dark:bg-none dark:bg-ik-crown dark:text-ik-navy dark:border-2 dark:border-ik-navy dark:shadow-[0_6px_0_var(--color-ik-navy)]"
+              >
+                <Mail size={20} /> Send Email
+              </button>
+            </form>
+          </div>
         </FadeIn>
       </div>
     </div>
   </section>
-);
+  );
+};
 
 const Footer = () => (
-  <footer className="py-12 px-6 bg-ink dark:bg-black text-white transition-colors duration-500">
-    <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
-      <Logo className="text-2xl text-white" />
-      <div className="flex gap-8 text-white/60 text-sm font-medium">
-        <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-        <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
-        <a href="#" className="hover:text-white transition-colors">Cookies</a>
+  <footer className="py-14 px-6 bg-ink text-white">
+    <div className="max-w-7xl mx-auto">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+        <a href="#" className="self-start lg:self-auto"><Logo className="text-2xl" /></a>
+        <nav aria-label="Footer">
+          <ul className="flex flex-wrap gap-x-8 gap-y-3 font-medium">
+            {NAV_LINKS.map((l) => (
+              <li key={l.href}><a href={l.href} className="text-white/75 hover:text-jake-fur transition-colors">{l.label}</a></li>
+            ))}
+          </ul>
+        </nav>
+        <div className="flex gap-3">
+          {SOCIAL_LINKS.map(({ href, label, Icon }) => (
+            <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label} className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center text-white/75 hover:text-jake-fur hover:border-jake-fur transition-colors">
+              <Icon size={18} />
+            </a>
+          ))}
+        </div>
       </div>
-      <p className="text-white/40 text-xs">© 2026 Ipseity. All rights reserved.</p>
+      <div className="mt-10 pt-6 border-t border-white/10 flex flex-col md:flex-row justify-between gap-4 text-xs text-white/45">
+        <p>© 2026 Portfolio. All rights reserved.</p>
+        <div className="flex gap-6">
+          <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
+          <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
+          <a href="#" className="hover:text-white transition-colors">Cookies</a>
+        </div>
+      </div>
     </div>
   </footer>
 );
 
 export default function PortfolioPage() {
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const savedTheme = window.localStorage.getItem('portfolio-theme');
-    if (savedTheme) return savedTheme === 'dark';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
-  });
+  const activeSection = useTrackActiveSection();
 
   useEffect(() => {
     document.documentElement.style.scrollBehavior = 'smooth';
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-      document.documentElement.style.colorScheme = 'dark';
-      window.localStorage.setItem('portfolio-theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      document.documentElement.style.colorScheme = 'light';
-      window.localStorage.setItem('portfolio-theme', 'light');
-    }
-  }, [isDarkMode]);
+    document.documentElement.style.colorScheme = 'light';
+  }, []);
 
   useEffect(() => {
     const target = window.location.hash ? document.querySelector(window.location.hash) : null;
@@ -949,24 +1656,9 @@ export default function PortfolioPage() {
   }, []);
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-black text-ink dark:text-white transition-colors duration-500 selection:bg-accent-start selection:text-white">
-      <div className="fixed inset-0 z-0 h-screen w-screen overflow-hidden pointer-events-none">
-        <Prism
-          animationType="3drotate"
-          height={3.8}
-          baseWidth={5.8}
-          glow={1.35}
-          noise={0.22}
-          transparent
-          scale={2.9}
-          hueShift={0.45}
-          colorFrequency={1.15}
-          bloom={1.1}
-          timeScale={0.35}
-        />
-      </div>
-      <div className="fixed inset-0 z-0 pointer-events-none bg-white/62 dark:bg-slate-950/48" />
-      <div className="fixed inset-0 z-0 pointer-events-none bg-gradient-to-br from-slate-50/70 via-white/38 to-[#a3beff]/26 dark:from-slate-950/45 dark:via-slate-900/24 dark:to-[#a3beff]/16" />
+    <ActiveSectionContext.Provider value={activeSection}>
+    <div className="relative min-h-screen overflow-x-clip bg-bg text-ink selection:bg-accent-start selection:text-white">
+      <div className="fixed inset-0 z-0 pointer-events-none bg-linear-to-b from-white to-accent-start/40" />
       <Navbar />
       <main className="relative z-10">
         <Hero />
@@ -974,25 +1666,17 @@ export default function PortfolioPage() {
         <AboutStats />
         <JourneyTimeline />
         <Education />
+        <PortfolioIntro />
         <Portfolio />
         <Reviews />
-        <SkillsTicker />
+        <ToolsSection />
         <FAQ />
         <Contact />
       </main>
       <div className="relative z-10">
         <Footer />
       </div>
-
-      {/* Dark Mode Toggle */}
-      <button 
-        onClick={() => setIsDarkMode(!isDarkMode)}
-        className="fixed bottom-8 right-8 z-50 p-4 rounded-full bg-ink dark:bg-white text-white dark:text-ink shadow-2xl hover:scale-110 transition-transform"
-        aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-        aria-pressed={isDarkMode}
-      >
-        {isDarkMode ? <Sun size={24} /> : <Moon size={24} />}
-      </button>
     </div>
+    </ActiveSectionContext.Provider>
   );
 }

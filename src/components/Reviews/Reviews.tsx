@@ -1,3 +1,7 @@
+import { AnimatedAsset } from '../PortfolioMotion/PortfolioMotion';
+import { useSectionActive } from '../../activeSection';
+import type React from 'react';
+import { motion } from 'motion/react';
 import { BadgeCheck, Plus } from 'lucide-react';
 
 /**
@@ -251,82 +255,187 @@ const reviews = [
   }
 ];
 
-// Three columns on desktop with a vertical stagger; on mobile they collapse into
-// one flow so no review is dropped from the page. Nine reviews split 3/3/3.
-const columns = [reviews.slice(0, 3), reviews.slice(3, 6), reviews.slice(6, 9)];
-const stagger = ["lg:mt-0", "lg:mt-12", "lg:mt-6"];
+// Kriti's review is the spotlight; the other eight run in two marquee rows that
+// travel in opposite directions (pause on hover / focus).
+const [spotlight, ...rest] = reviews;
+const rows = [rest.slice(0, 4), rest.slice(4)];
 
-const ReviewCard = ({ review }: { review: typeof reviews[number] }) => {
+// Deterministic ember layout for the backdrop (left %, size px, duration s, delay s, drift px).
+const embers = [
+  [4, 6, 9, 0, 30], [11, 4, 11, 2.5, -20], [19, 8, 8, 5, 40], [27, 5, 12, 1, -35],
+  [35, 3, 10, 6, 15], [44, 7, 9.5, 3, -25], [52, 4, 13, 0.5, 35], [60, 6, 8.5, 4.5, -40],
+  [68, 3, 11.5, 2, 20], [75, 8, 9, 7, -15], [83, 5, 12.5, 1.5, 30], [91, 4, 10, 5.5, -30],
+  [97, 6, 8, 3.5, 10]
+] as const;
+
+const ReviewCard = ({ review, className = "", hidden = false }: { review: typeof reviews[number], className?: string, hidden?: boolean }) => {
   const { Logo, quote, name, role, avatarSrc } = review;
   return (
-    <div className="flex flex-col justify-between gap-6 rounded-3xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur-md p-6 md:p-8 shadow-sm transition-colors">
+    <figure data-motion-card aria-hidden={hidden || undefined} className={`flex flex-col justify-between gap-6 rounded-3xl border p-6 md:p-7 backdrop-blur-md transition-all duration-300 border-black/5 bg-white/70 shadow-sm dark:border-fire-hair/20 dark:bg-fire-ember/70 dark:hover:border-fire-hair/70 dark:hover:shadow-[0_0_28px_rgb(252_56_1/0.35)] hover:-translate-y-1 ${className}`}>
       <div className="flex flex-col gap-5">
         <Logo />
-        <blockquote className="text-base md:text-lg leading-relaxed text-ink/80 dark:text-slate-300">
+        <blockquote className="text-base leading-relaxed text-ink/80 dark:text-fire-cream/85">
           &ldquo;{quote}&rdquo;
         </blockquote>
       </div>
-      <div className="flex items-center gap-3">
-        <Avatar name={name} src={avatarSrc} className="w-11 h-11 shrink-0 rounded-full text-sm" />
+      <figcaption className="flex items-center gap-3">
+        <Avatar name={name} src={avatarSrc} className="w-11 h-11 shrink-0 rounded-full text-sm ring-2 ring-transparent dark:ring-fire-hair/60" />
         <div className="min-w-0">
-          <div className="flex items-center gap-1.5 font-semibold text-ink dark:text-white">
+          <div className="flex items-center gap-1.5 font-semibold text-ink dark:text-fire-cream">
             <span className="truncate">{name}</span>
-            <BadgeCheck size={16} className="shrink-0 text-accent-start" aria-label="Verified" />
+            <BadgeCheck size={16} className="shrink-0 text-accent-start dark:text-fire-gold" aria-label="Verified" />
           </div>
-          <div className="text-sm text-ink/50 dark:text-slate-400 truncate">{role}</div>
+          <div className="text-sm text-ink/50 dark:text-fire-cream/55 truncate">{role}</div>
         </div>
-      </div>
-    </div>
+      </figcaption>
+    </figure>
   );
 };
 
-const Reviews = () => (
-  <section id="reviews" className="py-32 px-6">
-    <div className="max-w-7xl mx-auto">
-      <div className="flex flex-col items-center text-center gap-5 mb-16 md:mb-20">
-        <h2 className="text-5xl md:text-7xl font-display font-bold tracking-tighter">My reviews</h2>
-        <p className="text-lg md:text-xl text-ink/60 dark:text-slate-400 max-w-xl">
-          Hear first-hand from the teams and clients I've built for.
-        </p>
-
-        {/* Avatar stack */}
-        <div className="flex items-center gap-3 mt-2">
-          <div className="flex -space-x-2">
-            {reviews.map(({ id, name, avatarSrc }) => (
-              <Avatar
-                key={id}
-                name={name}
-                src={avatarSrc}
-                eager
-                className="w-9 h-9 rounded-full text-[10px] ring-[1.5px] ring-bg dark:ring-slate-950"
-              />
-            ))}
-            <span className="w-9 h-9 rounded-full ring-[1.5px] ring-bg dark:ring-slate-950 bg-black/5 dark:bg-white/10 flex items-center justify-center text-xs font-semibold text-ink/50 dark:text-slate-400">
-              +5
-            </span>
-          </div>
-          <a
-            href="#contact"
-            aria-label="Leave a review"
-            title="Leave a review"
-            className="w-9 h-9 rounded-full border border-dashed border-black/20 dark:border-white/25 flex items-center justify-center text-ink/50 dark:text-slate-400 hover:border-accent-start hover:text-accent-start transition-colors"
-          >
-            <Plus size={16} />
-          </a>
+const MarqueeRow = ({ items, reverse = false, duration }: { items: typeof reviews, reverse?: boolean, duration: string }) => (
+  <div className="marquee marquee-mask overflow-hidden py-3">
+    <div
+      className={`marquee-track flex w-max ${reverse ? 'marquee-track--reverse' : ''}`}
+      style={{ '--marquee-duration': duration } as React.CSSProperties}
+    >
+      {[0, 1].map((copy) => (
+        <div key={copy} className="flex">
+          {/* each copy repeats the row twice so it is wider than any screen */}
+          {[...items, ...items].map((review, i) => (
+            <ReviewCard key={`${copy}-${i}-${review.id}`} review={review} hidden={copy === 1 || i >= items.length} className="w-[300px] md:w-[380px] mr-6 shrink-0" />
+          ))}
         </div>
+      ))}
+    </div>
+  </div>
+);
+
+// Flame Princess-themed while current: Fire Kingdom backdrop with rising embers,
+// flame lettering, ember-glass cards. `dark` switches the cards' dark: styles on.
+const Reviews = () => {
+  const onSection = useSectionActive('reviews');
+  const SpotlightLogo = spotlight.Logo;
+
+  return (
+  <section
+    id="reviews"
+    className={`relative overflow-hidden py-32 transition-colors duration-700 ${onSection ? 'dark text-fire-cream' : ''}`}
+  >
+    <div
+      aria-hidden="true"
+      className={`pointer-events-none absolute inset-0 transition-opacity duration-700 bg-linear-to-b from-fire-ember via-[#3A0B05] to-[#7A1C06] ${onSection ? 'opacity-100' : 'opacity-0'}`}
+    >
+      {/* Fire Kingdom scene, dimmed and faded at the edges like the hero background */}
+      <img
+        src="/flame-bg.webp"
+        alt=""
+        className="absolute inset-0 w-full h-full object-cover opacity-35 select-none"
+        style={{
+          maskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)'
+        }}
+      />
+      {embers.map(([left, size, dur, delay, drift], i) => (
+        <span
+          key={i}
+          className="ember"
+          style={{ left: `${left}%`, width: size, height: size, '--dur': `${dur}s`, '--delay': `${delay}s`, '--drift': `${drift}px` } as React.CSSProperties}
+        />
+      ))}
+    </div>
+
+    <div className="relative max-w-7xl mx-auto px-6">
+      {/* Header: title + avatar stack, Flame Princess inspecting on the right */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-10 mb-14">
+        <div className="max-w-xl">
+          <p className="text-sm font-bold uppercase tracking-widest text-accent-start dark:text-fire-gold mb-4">Client feedback</p>
+          <h2 className={`text-5xl md:text-7xl font-display font-bold tracking-tighter ${onSection ? 'flame-text' : 'title-text'}`}>My reviews</h2>
+          <p className="mt-5 text-lg md:text-xl text-ink/60 dark:text-fire-cream/75">
+            Hear first-hand from the teams and clients I've built for.
+          </p>
+          <div className="flex items-center gap-3 mt-6">
+            <div className="flex -space-x-2">
+              {reviews.map(({ id, name, avatarSrc }) => (
+                <Avatar
+                  key={id}
+                  name={name}
+                  src={avatarSrc}
+                  eager
+                  className="w-9 h-9 rounded-full text-[10px] ring-2 ring-bg dark:ring-fire-ember"
+                />
+              ))}
+              <span className="w-9 h-9 rounded-full ring-2 ring-bg dark:ring-fire-ember bg-black/5 dark:bg-fire-flame/25 flex items-center justify-center text-xs font-semibold text-ink/50 dark:text-fire-cream/80">
+                +5
+              </span>
+            </div>
+            <a
+              href="#contact"
+              aria-label="Leave a review"
+              title="Leave a review"
+              className="w-9 h-9 rounded-full border border-dashed border-black/20 dark:border-fire-hair/50 flex items-center justify-center text-ink/50 dark:text-fire-gold hover:border-accent-start hover:text-accent-start dark:hover:border-fire-gold transition-colors"
+            >
+              <Plus size={16} />
+            </a>
+          </div>
+        </div>
+
+        <AnimatedAsset
+          src="/flame-princess.webp"
+          alt="Flame Princess inspecting through a magnifying glass"
+          width={433}
+          height={900}
+          animate={{
+            y: [0, -10, 0],
+            filter: [
+              'drop-shadow(0 0 14px rgba(252,56,1,0.45))',
+              'drop-shadow(0 0 30px rgba(255,192,46,0.7))',
+              'drop-shadow(0 0 14px rgba(252,56,1,0.45))'
+            ]
+          }}
+          transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
+          className="self-center md:self-end w-28 md:w-40 lg:w-48 h-auto shrink-0 select-none"
+          draggable={false}
+        />
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 lg:items-start">
-        {columns.map((column, i) => (
-          <div key={i} className={`flex flex-col gap-6 lg:gap-8 lg:flex-1 ${stagger[i]}`}>
-            {column.map((review) => (
-              <ReviewCard key={review.id} review={review} />
-            ))}
+      {/* Spotlight review */}
+      <motion.figure
+        data-motion-card
+        initial={{ opacity: 0, y: 30, scale: 0.97 }}
+        whileInView={{ opacity: 1, y: 0, scale: 1 }}
+        viewport={{ once: true, margin: "-80px" }}
+        transition={{ duration: 0.7, ease: [0.21, 0.47, 0.32, 0.98] }}
+        className="relative mb-10 rounded-[2rem] border p-8 md:p-12 backdrop-blur-md overflow-hidden border-black/5 bg-white/80 shadow-sm dark:border-fire-hair/40 dark:bg-fire-ember/75 dark:shadow-[0_0_60px_rgb(252_56_1/0.25)]"
+      >
+        <span aria-hidden="true" className="absolute -top-6 right-6 md:right-10 font-display text-[10rem] md:text-[14rem] leading-none text-accent-start/15 dark:text-fire-flame/30 select-none">&ldquo;</span>
+        <div className="relative grid md:grid-cols-[1fr_auto] gap-8 items-end">
+          <div>
+            <SpotlightLogo />
+            <blockquote className="mt-6 text-xl md:text-3xl leading-snug font-medium text-ink dark:text-fire-cream">
+              &ldquo;{spotlight.quote}&rdquo;
+            </blockquote>
           </div>
-        ))}
-      </div>
+          <figcaption className="flex items-center gap-4">
+            <Avatar name={spotlight.name} src={spotlight.avatarSrc} className="w-16 h-16 shrink-0 rounded-full text-base ring-4 ring-accent-start/30 dark:ring-fire-hair/70" />
+            <div>
+              <div className="flex items-center gap-1.5 text-lg font-semibold text-ink dark:text-fire-cream">
+                {spotlight.name}
+                <BadgeCheck size={18} className="text-accent-start dark:text-fire-gold" aria-label="Verified" />
+              </div>
+              <div className="text-ink/55 dark:text-fire-cream/60">{spotlight.role}</div>
+            </div>
+          </figcaption>
+        </div>
+      </motion.figure>
+    </div>
+
+    {/* Marquee rows run full-bleed */}
+    <div className="relative flex flex-col gap-2">
+      <MarqueeRow items={rows[0]} duration="55s" />
+      <MarqueeRow items={rows[1]} duration="60s" reverse />
     </div>
   </section>
-);
+  );
+};
 
 export default Reviews;
