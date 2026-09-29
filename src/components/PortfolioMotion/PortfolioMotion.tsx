@@ -44,7 +44,9 @@ export default function PortfolioMotion({ children }: PropsWithChildren) {
 
     const sections = host.querySelectorAll<HTMLElement>('main section[id]');
     const visibility = new IntersectionObserver(entries => {
-      entries.forEach(entry => entry.target.classList.toggle('motion-in-view', entry.isIntersecting));
+      // A data attribute, not a class: sections re-render their className when their theme
+      // switches on, which would wipe a hand-added class and leave loops paused.
+      entries.forEach(entry => entry.target.toggleAttribute('data-in-view', entry.isIntersecting));
     });
     sections.forEach(section => visibility.observe(section));
 
@@ -86,7 +88,7 @@ export default function PortfolioMotion({ children }: PropsWithChildren) {
       visibility.disconnect();
       animations.forEach(animation => animation.cancel());
       clear();
-      sections.forEach(section => section.classList.remove('motion-in-view'));
+      sections.forEach(section => section.removeAttribute('data-in-view'));
       host.removeEventListener('pointermove', move);
       host.removeEventListener('pointerleave', clear);
       window.removeEventListener('scroll', clear);

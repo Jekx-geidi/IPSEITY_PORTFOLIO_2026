@@ -61,8 +61,8 @@
   .portfolio-motion .motion-tool:hover { translate: 0 -4px; box-shadow: 0 5px 16px rgb(var(--scene-light) / .3); }
   .portfolio-motion .motion-tool img { transition: rotate .35s ease; }
   .portfolio-motion .motion-tool:hover img { rotate: -12deg; }
-  .portfolio-motion .motion-in-view .motion-sparkle { animation: portfolio-sparkle 3s ease-in-out infinite alternate; }
-  .portfolio-motion section:not(.motion-in-view) :is(.ember, .snowflake, .marquee-track) { animation-play-state: paused; }
+  .portfolio-motion [data-in-view] .motion-sparkle { animation: portfolio-sparkle 3s ease-in-out infinite alternate; }
+  .portfolio-motion section:not([data-in-view]) :is(.ember, .snowflake, .marquee-track) { animation-play-state: paused; }
   .portfolio-motion h2 { transition: text-shadow .4s ease; }
   .portfolio-motion h2:hover { text-shadow: 0 6px 28px rgb(var(--scene-light) / .35); }
   .portfolio-motion .motion-number { transition: scale .3s ease, text-shadow .3s ease; }

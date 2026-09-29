@@ -145,6 +145,20 @@ const Navbar = () => {
   // An open menu needs a solid bar even at the very top of the page.
   const solid = isScrolled || menuOpen;
 
+  // Mobile menu links scroll by hand: on touch screens the tap gesture cancels the
+  // browser's smooth anchor scroll (the hash changed but the page never moved).
+  const goToSection = (event: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    event.preventDefault();
+    setMenuOpen(false);
+    const target = document.querySelector<HTMLElement>(href);
+    if (!target) return;
+    window.setTimeout(() => {
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+      history.replaceState(null, '', href);
+    }, 80);
+  };
+
   return (
     <nav
       className={`fixed z-50 transition-all duration-500 ${
@@ -207,7 +221,7 @@ const Navbar = () => {
                   >
                     <a
                       href={l.href}
-                      onClick={() => setMenuOpen(false)}
+                      onClick={(e) => goToSection(e, l.href)}
                       className="nav-link flex items-center justify-between py-3 text-xl font-display font-bold border-b border-current/10 transition-colors"
                     >
                       {l.label}
@@ -228,6 +242,9 @@ const Navbar = () => {
 // Both images share one crop (see public/jake-*.webp) so the swap doesn't shift.
 const HeroJake = () => {
   const [waving, setWaving] = useState(false);
+  // Touch taps also fire emulated mouse-enter then click, which toggled the wave on and
+  // straight back off. Hover (mouse only) shows it; a tap/click toggles it once.
+  const pointerType = React.useRef<string>('mouse');
 
   return (
     <div
@@ -242,10 +259,11 @@ const HeroJake = () => {
           setWaving(w => !w);
         }
       }}
-      onMouseEnter={() => setWaving(true)}
-      onMouseLeave={() => setWaving(false)}
+      onPointerDown={(e) => { pointerType.current = e.pointerType; }}
+      onPointerEnter={(e) => { if (e.pointerType === 'mouse') setWaving(true); }}
+      onPointerLeave={(e) => { if (e.pointerType === 'mouse') setWaving(false); }}
       onBlur={() => setWaving(false)}
-      onClick={() => setWaving(w => !w)}
+      onClick={() => { if (pointerType.current !== 'mouse') setWaving(w => !w); pointerType.current = 'mouse'; }}
     >
       <motion.div
         animate={waving ? { y: [0, -14, 0], rotate: [0, -1.5, 1.5, 0] } : { y: 0, rotate: 0 }}
@@ -273,23 +291,25 @@ const HeroJake = () => {
 
       <AnimatePresence>
         {waving && (
+          // Phones/tablets: centred above Jake's head. lg+: beside his head (left 62%). The outer
+          // div positions (no transform) so motion's scale/y on the inner one can't undo it.
+          <div key="jake-hi" className="absolute inset-x-0 -top-14 lg:-top-10 lg:inset-x-auto lg:left-[62%] z-10 flex justify-center lg:block pointer-events-none">
           <motion.div
-            key="jake-hi"
             initial={{ opacity: 0, scale: 0.4, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.6, y: 6 }}
             transition={{ type: "spring", stiffness: 420, damping: 18 }}
-            style={{ transformOrigin: 'bottom left' }}
-            className="absolute -top-6 left-[62%] md:-top-10 z-10"
+            style={{ transformOrigin: 'bottom center' }}
             role="status"
           >
-            <div className="relative whitespace-nowrap rounded-2xl border-4 border-ink bg-white px-4 py-2 md:px-5 md:py-3 font-display text-xl md:text-3xl text-ink shadow-[4px_4px_0_var(--color-ink)]">
+            <div className="relative whitespace-nowrap rounded-2xl border-4 border-ink bg-white px-5 py-2.5 md:px-5 md:py-3 font-display text-2xl md:text-3xl text-ink shadow-[4px_4px_0_var(--color-ink)]">
               Hi I am <span className="text-jake">Jake!</span>
               {/* Bubble tail pointing down-left toward Jake's head */}
               <span className="absolute -bottom-[14px] left-5 h-0 w-0 border-x-[10px] border-t-[14px] border-x-transparent border-t-ink" />
               <span className="absolute -bottom-[8px] left-[23px] h-0 w-0 border-x-[7px] border-t-[10px] border-x-transparent border-t-white" />
             </div>
           </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>
@@ -960,7 +980,9 @@ const Education = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -24 }}
               transition={{ duration: 0.45, ease: [0.21, 0.47, 0.32, 0.98] }}
-              className={`text-center max-w-2xl mx-auto transition-colors duration-500 ${onSection ? 'rounded-[2rem] bg-gunter-gown border-4 border-gunter-gold p-8 md:p-12 text-gunter-belly shadow-[8px_8px_0_var(--color-gunter-navy)]' : ''}`}
+              // Padding/border are constant so the section's height never changes when the
+              // theme switches (it used to grow ~166px and make anchor scrolls overshoot).
+              className={`text-center max-w-2xl mx-auto rounded-[2rem] border-4 p-8 md:p-12 transition-colors duration-500 ${onSection ? 'bg-gunter-gown border-gunter-gold text-gunter-belly shadow-[8px_8px_0_var(--color-gunter-navy)]' : 'bg-transparent border-transparent'}`}
             >
               <div className="w-20 h-20 md:w-24 md:h-24 mx-auto mb-6 rounded-full bg-white p-3 shadow-xl border border-black/5">
                 <img src={active.logo} alt={`${active.institution} logo`} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
@@ -1137,7 +1159,29 @@ const toolGroups: { title: string; stripe: string; Icon: typeof Code2; tools: { 
       { name: "Node.js", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nodejs/nodejs-original.svg" },
       { name: "Laravel", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/laravel/laravel-original.svg" },
       { name: "Tailwind", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/tailwindcss/tailwindcss-original.svg" },
-      { name: "FastAPI", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/fastapi/fastapi-original.svg" }
+      { name: "FastAPI", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/fastapi/fastapi-original.svg" },
+      { name: "Next.js", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nextjs/nextjs-original.svg" },
+      { name: "NestJS", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nestjs/nestjs-original.svg" },
+      { name: "Express", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/express/express-original.svg" },
+      { name: "Angular", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/angular/angular-original.svg" },
+      { name: "Svelte", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/svelte/svelte-original.svg" },
+      { name: "Nuxt", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nuxtjs/nuxtjs-original.svg" },
+      { name: "Astro", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/astro/astro-original.svg" },
+      { name: "Remix", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/remix/remix-original.svg" },
+      { name: "Django", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/django/django-plain.svg" },
+      { name: "Flask", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/flask/flask-original.svg" },
+      { name: "Spring Boot", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/spring/spring-original.svg" },
+      { name: ".NET", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/dotnetcore/dotnetcore-original.svg" },
+      { name: "Bootstrap", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/bootstrap/bootstrap-original.svg" },
+      { name: "Sass", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/sass/sass-original.svg" },
+      { name: "jQuery", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/jquery/jquery-original.svg" },
+      { name: "Redux", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/redux/redux-original.svg" },
+      { name: "Prisma", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/prisma/prisma-original.svg" },
+      { name: "Three.js", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/threejs/threejs-original.svg" },
+      { name: "Vite", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/vitejs/vitejs-original.svg" },
+      { name: "React Native", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/react/react-original.svg" },
+      { name: "Flutter", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/flutter/flutter-original.svg" },
+      { name: "Electron", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/electron/electron-original.svg" }
     ]
   },
   {
@@ -1157,7 +1201,18 @@ const toolGroups: { title: string; stripe: string; Icon: typeof Code2; tools: { 
       { name: "OpenAI", icon: "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/openai.svg" },
       { name: "Hermes Agent", icon: "https://hermes-agent.nousresearch.com/img/desktop/badge.webp" },
       { name: "Composio", icon: "https://composio.dev/favicon.ico" },
-      { name: "Sixth AI", icon: "https://trysixth.com/favicon.ico" }
+      { name: "Sixth AI", icon: "https://trysixth.com/favicon.ico" },
+      { name: "GitHub Copilot", icon: "https://cdn.simpleicons.org/githubcopilot/000000" },
+      { name: "Gemini", icon: "https://cdn.simpleicons.org/googlegemini/8E75B2" },
+      { name: "Cursor", icon: "https://cdn.simpleicons.org/cursor/000000" },
+      { name: "Hugging Face", icon: "https://cdn.simpleicons.org/huggingface/FFD21E" },
+      { name: "LangChain", icon: "https://cdn.simpleicons.org/langchain/1C3C3C" },
+      { name: "Ollama", icon: "https://cdn.simpleicons.org/ollama/000000" },
+      { name: "Perplexity", icon: "https://cdn.simpleicons.org/perplexity/1FB8CD" },
+      { name: "DeepSeek", icon: "https://cdn.simpleicons.org/deepseek/4D6BFE" },
+      { name: "Llama", icon: "https://cdn.simpleicons.org/meta/0467DF" },
+      { name: "Mistral", icon: "https://cdn.simpleicons.org/mistralai/FA520F" },
+      { name: "n8n", icon: "https://cdn.simpleicons.org/n8n/EA4B71" }
     ]
   },
   {
@@ -1236,9 +1291,9 @@ const ToolsSection = () => {
           </div>
         </FadeIn>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="columns-1 md:columns-2 lg:columns-3 gap-6">
           {toolGroups.map((group, gi) => (
-            <FadeIn key={group.title} delay={gi * 0.08}>
+            <FadeIn key={group.title} delay={gi * 0.08} className="break-inside-avoid mb-6">
               <div
                 data-motion-card
                 className="h-full rounded-3xl border-2 bg-white/85 backdrop-blur-md p-6 shadow-sm transition-shadow hover:shadow-lg overflow-hidden relative"
@@ -1403,7 +1458,7 @@ const FAQ = () => {
               <h2 className={`text-4xl md:text-6xl font-display font-bold mb-4 tracking-tighter ${onSection ? 'text-lsp-deep' : 'title-text'}`}>
                 Frequently Asked<br /><span className={onSection ? 'lsp-outline text-lsp-star' : ''}>Questions.</span>
               </h2>
-              <p className={`inline-block transition-colors duration-700 ${onSection ? 'text-lsp-deep font-medium bg-lsp-mist/85 backdrop-blur-sm rounded-full px-4 py-1.5' : 'text-ink/60'}`}>Tap a card to flip through the answers.</p>
+              <p className={`inline-block rounded-full px-4 py-1.5 font-medium transition-colors duration-700 ${onSection ? 'text-lsp-deep bg-lsp-mist/85 backdrop-blur-sm' : 'text-ink/60 bg-transparent'}`}>Tap a card to flip through the answers.</p>
             </div>
             <AnimatedAsset
               src="/lsp.webp"
@@ -1478,7 +1533,7 @@ const snowflakes = [
 // under a gold crown. `dark` switches the section's dark: styles on.
 const Contact = () => {
   const onSection = useSectionActive('contact');
-  const field = "w-full rounded-2xl px-5 py-4 outline-none transition-shadow bg-black/5 focus:ring-2 focus:ring-accent-start dark:bg-white/10 dark:text-white dark:placeholder:text-ik-skin/50 dark:border dark:border-ik-skin/25 dark:focus:ring-ik-crown";
+  const field = "w-full rounded-2xl px-5 py-4 outline-none transition-shadow bg-black/5 focus:ring-2 focus:ring-accent-start dark:bg-white/10 dark:text-white dark:placeholder:text-ik-skin/50 border border-transparent dark:border-ik-skin/25 dark:focus:ring-ik-crown";
   const label = "text-xs font-bold uppercase tracking-widest text-ink/40 dark:text-ik-skin";
 
   return (
@@ -1583,7 +1638,7 @@ const Contact = () => {
 
               <button
                 type="submit"
-                className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl font-bold transition-transform hover:scale-[1.02] bg-linear-to-r from-accent-start to-accent-end text-ink dark:bg-none dark:bg-ik-crown dark:text-ik-navy dark:border-2 dark:border-ik-navy dark:shadow-[0_6px_0_var(--color-ik-navy)]"
+                className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl font-bold transition-transform hover:scale-[1.02] bg-linear-to-r from-accent-start to-accent-end text-ink border-2 border-transparent dark:bg-none dark:bg-ik-crown dark:text-ik-navy dark:border-ik-navy dark:shadow-[0_6px_0_var(--color-ik-navy)]"
               >
                 <Mail size={20} /> Send Email
               </button>
