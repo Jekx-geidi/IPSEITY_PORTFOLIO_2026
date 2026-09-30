@@ -111,6 +111,7 @@ Science curriculum, which gave me the academic foundation for a technical and cr
 | **LostLink WebApp** | Lost-and-found management system |
 | **PNPh Tourna Website** | Tournament website |
 | **Wendears Cake** | E-commerce website |
+| **COMS.AI** | Cebu Outage Monitoring System — real-time dashboard and live map of Cebu power interruptions, with Locate Me and an Ask COMS AI assistant |
 
 ---
 

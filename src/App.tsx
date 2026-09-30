@@ -1086,7 +1086,8 @@ const Portfolio = () => {
     { title: "MAAI WebApp Project", category: "SEO AI Agent", img: "/maai.png" },
     { title: "LostLink WebApp Project", category: "Lost and Found Management", img: "/Web App.png" },
     { title: "Wendears Cake", category: "E-Commerce Website", img: "/Wendears.png" },
-    { title: "Tourmate", category: "AI Travel Companion App", img: "/Tourmate'.png" }
+    { title: "Tourmate", category: "AI Travel Companion App", img: "/Tourmate'.png" },
+    { title: "COMS.AI", category: "Cebu Outage Monitoring System", img: "/COMS.png" }
   ];
 
   return (
@@ -1135,11 +1136,13 @@ const Portfolio = () => {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 lg:auto-rows-[270px]">
           {projects.map((project, i) => {
             const featured = i === 0;
+            // On lg the featured card fills 4 cells; a lone card left on the last row spans it.
+            const lgOrphan = i === projects.length - 1 && (projects.length + 3) % 3 === 1;
             return (
               <FadeIn
                 key={project.title}
                 delay={i * 0.08}
-                className={featured ? 'md:col-span-2 lg:row-span-2' : ''}
+                className={featured ? 'md:col-span-2 lg:row-span-2' : lgOrphan ? 'lg:col-span-3' : ''}
               >
                 <div data-motion-card
                 className={`group relative h-full ${featured ? 'min-h-[420px]' : 'min-h-[300px] lg:min-h-0'} rounded-[2rem] overflow-hidden border-[3px] border-pb-ink bg-white cursor-pointer shadow-[6px_6px_0_var(--color-pb-magenta)] hover:shadow-[10px_10px_0_var(--color-pb-magenta)] transition-shadow duration-300`}>
