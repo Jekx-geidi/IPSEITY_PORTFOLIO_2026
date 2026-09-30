@@ -5,6 +5,7 @@ import { ActiveSectionContext, useActiveSection, useSectionActive, useTrackActiv
 import { AnimatedAsset } from './components/PortfolioMotion/PortfolioMotion';
 import Logo from './components/Logo/Logo';
 import Reviews from './components/Reviews/Reviews';
+import BmoChat from './components/BmoChat/BmoChat';
 import ScrollExpand from './components/ScrollExpand/ScrollExpand';
 import NumberTicker from './components/NumberTicker/NumberTicker';
 import { DiaTextReveal } from './components/DiaTextReveal/DiaTextReveal';
@@ -32,7 +33,9 @@ import {
   Palette,
   Wrench,
   Menu,
-  X
+  X,
+  Play,
+  Pause
 } from 'lucide-react';
 
 // --- Components ---
@@ -116,6 +119,45 @@ const SOCIAL_LINKS = [
   { href: 'https://github.com/Jekx-geidi', label: 'GitHub', Icon: Github }
 ];
 
+// Background song toggle. Browsers block autoplay (scrolling doesn't count as a
+// user gesture), so the visitor starts it with a tap; it loops while playing.
+const SONG_SRC = '/' + encodeURIComponent('Island Song (Come Along with Me) (feat. Ashley Eriksson).mp3');
+
+const MusicToggle = ({ className = "" }: { className?: string }) => {
+  const audioRef = React.useRef<HTMLAudioElement | null>(null);
+  const [playing, setPlaying] = useState(false);
+
+  const toggle = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (audio.paused) audio.play().catch(() => setPlaying(false));
+    else audio.pause();
+  };
+
+  return (
+    <>
+      <audio
+        ref={audioRef}
+        src={SONG_SRC}
+        loop
+        preload="none"
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+      />
+      <button
+        type="button"
+        onClick={toggle}
+        aria-pressed={playing}
+        aria-label={playing ? 'Pause song' : 'Play song'}
+        title={playing ? 'Pause song' : 'Play song: Island Song'}
+        className={`w-10 h-10 shrink-0 rounded-full border border-current/25 flex items-center justify-center hover:bg-current/10 transition-colors ${className}`}
+      >
+        {playing ? <Pause size={18} /> : <Play size={18} className="translate-x-px" />}
+      </button>
+    </>
+  );
+};
+
 // Desktop/laptop (lg+): full link row + Resume. Phones/tablets: logo, Resume
 // and a burger that drops a menu panel in the current section's theme.
 const Navbar = () => {
@@ -186,6 +228,8 @@ const Navbar = () => {
             <span className="hidden sm:inline">Download Resume</span>
             <span className="inline sm:hidden">Resume</span>
           </a>
+          {/* Mobile: between Resume and the burger. Desktop: left of Resume. */}
+          <MusicToggle className="lg:order-first" />
           <button
             type="button"
             onClick={() => setMenuOpen((o) => !o)}
@@ -784,7 +828,7 @@ const JourneyTimeline = () => {
         initial={false}
         animate={onSection ? { opacity: 1, x: 0, y: [0, -14, 0] } : { opacity: 0, x: 40, y: 0 }}
         transition={onSection ? { opacity: { duration: 0.7 }, x: { duration: 0.7 }, y: { duration: 4, repeat: Infinity, ease: "easeInOut" } } : { duration: 0.4 }}
-        className="hidden xl:block absolute right-[3%] bottom-16 w-72 2xl:w-80 h-auto z-10 pointer-events-none select-none drop-shadow-[0_0_30px_rgba(195,236,238,0.25)]"
+        className="relative z-10 block mx-auto w-40 sm:w-52 mb-10 xl:absolute xl:right-[3%] xl:bottom-16 xl:w-72 2xl:w-80 xl:mb-0 h-auto pointer-events-none select-none drop-shadow-[0_0_30px_rgba(195,236,238,0.25)]"
         draggable={false}
       />
       <div className="relative max-w-7xl mx-auto">
@@ -1717,6 +1761,7 @@ export default function PortfolioPage() {
       <div className="relative z-10">
         <Footer />
       </div>
+      <BmoChat />
     </div>
     </ActiveSectionContext.Provider>
   );

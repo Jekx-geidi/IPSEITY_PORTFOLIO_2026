@@ -1,0 +1,8 @@
+{
+  "functions": {
+    "api/chat.ts": {
+      "includeFiles": "ABOUTME.md",
+      "maxDuration": 60
+    }
+  }
+}
