@@ -24,6 +24,8 @@ const devChatApi = (apiKey: string | undefined): Plugin => ({
 
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
+  // api/_github.ts reads this from process.env, as it does on Vercel.
+  if (env.GITHUB_TOKEN) process.env.GITHUB_TOKEN ??= env.GITHUB_TOKEN;
   return {
     plugins: [react(), tailwindcss(), devChatApi(env.OPENROUTER_API_KEY)],
     define: {

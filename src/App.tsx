@@ -6,6 +6,7 @@ import { AnimatedAsset } from './components/PortfolioMotion/PortfolioMotion';
 import Logo from './components/Logo/Logo';
 import Reviews from './components/Reviews/Reviews';
 import BmoChat from './components/BmoChat/BmoChat';
+import TreasureChest from './components/TreasureChest/TreasureChest';
 import ScrollExpand from './components/ScrollExpand/ScrollExpand';
 import NumberTicker from './components/NumberTicker/NumberTicker';
 import { DiaTextReveal } from './components/DiaTextReveal/DiaTextReveal';
@@ -1690,6 +1691,9 @@ const Contact = () => {
           </div>
         </FadeIn>
       </div>
+
+      {/* The end of the adventure: open the chest for a thank-you */}
+      <TreasureChest onSection={onSection} />
     </div>
   </section>
   );

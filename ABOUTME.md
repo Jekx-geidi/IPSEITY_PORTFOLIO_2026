@@ -132,6 +132,50 @@ Science curriculum, which gave me the academic foundation for a technical and cr
 
 ---
 
+## What clients say
+
+> "Jake pairs real technical skill with genuine creative instinct, and he clearly has the potential to go far in this field. His problem-solving has made a measurable difference to how our business operates."
+> **Kriti Kumari**, CEO, MAAI Agency
+
+> "The agentic workflow Jake built now handles our entire intake queue. What used to eat two afternoons a week runs unattended and we just review the exceptions."
+> **Adil Floyd**, Head of Operations, Catalog
+
+> "He mapped our process before writing a line of code. That industrial engineering instinct is what made the automation actually fit how we work."
+> **Anaiah Whitten**, Product Manager, CloudWatch
+
+> "Clear communication throughout. Jake flagged the edge cases we hadn't thought about and shipped ahead of the date he gave us."
+> **Bec Ferguson**, Engineering Lead, Orbit
+
+> "We asked for a chatbot and he talked us out of it. What we got instead was a multi-agent pipeline that plans and executes, genuinely a different category of tool."
+> **Graham Doherty**, Client, Before You Dig Australia
+
+> "The dashboard he delivered is the first internal tool our team hasn't complained about. Fast, obvious, and it surfaces exactly what we need to act on."
+> **Cameron Yang**, Operations Analyst, Europa
+
+> "Jake documented everything as he went, so when we took the system in-house our own engineers picked it up in a day. Rare and very appreciated."
+> **Ethan Valdez**, CTO, Foresight
+
+> "Took a vague brief and came back with three options and honest tradeoffs for each. He made the decision easy instead of making it ours to figure out."
+> **Lyle Kauffman**, Design Director, Leapyear
+
+> "Our LLM costs dropped by more than half after his rework of the prompt pipeline, with no drop in output quality. He found savings we didn't know were there."
+> **Rhea Levine**, Head of Data, Lightspeed
+
+---
+
+## FAQ
+
+**What services do you offer?**
+A full range: UI/UX design, branding, product strategy, graphic design, motion graphics, video editing, photo manipulation, system management, web development, and AI agentic automation.
+
+**How much does a project cost?**
+It depends on scope and complexity. I give a custom quote after an initial discovery call.
+
+**Which tools do you use?**
+Mainly Figma for design. For development: HTML, CSS, PHP, Java, React, Node.js, TypeScript, Laravel, Tailwind and other modern web technologies. For databases: MongoDB, MySQL and Oracle.
+
+---
+
 ## Get in touch
 
 Got a project, a question, or just want to say hi? I'll get back to you.

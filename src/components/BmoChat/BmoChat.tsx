@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AlertTriangle, SendHorizontal, X } from 'lucide-react';
+import { AlertTriangle, ArrowUpRight, SendHorizontal, X } from 'lucide-react';
 
 // Floating "Ask BMO" chat. BMO answers questions about Jake only (see api/chat.ts);
 // anything else comes back as offTopic and shows the red alert bubble instead.
 
 type Item =
   | { id: number; kind: 'user'; text: string; offTopic?: boolean }
-  | { id: number; kind: 'bot'; text: string }
+  | { id: number; kind: 'bot'; text: string; character?: string; section?: string; links?: { label: string; url: string }[] }
   | { id: number; kind: 'alert' }
   | { id: number; kind: 'error'; text: string };
 
@@ -15,8 +15,23 @@ const THINKING_LINES = [
   "Let me check Jake's resume…",
   'Finding the information…',
   'Reviewing his details…',
+  'Asking my friends in Ooo…',
+  "Crawling Jake's GitHub…",
   'Almost there…',
 ];
+// Who BMO went to ask (api/chat.ts GUIDES), shown on the "Visit … section" chip.
+const CHARACTER_IMG: Record<string, string> = {
+  'BMO': '/bmo.webp',
+  'Jake the Dog': '/jake-wave.webp',
+  'Finn': '/finn.webp',
+  'Marceline': '/marceline.webp',
+  'Gunter': '/gunter.webp',
+  'Princess Bubblegum': '/bubblegum.webp',
+  'Flame Princess': '/flame-princess.webp',
+  'Lady Rainicorn': '/rainicorn.webp',
+  'Lumpy Space Princess': '/lsp.webp',
+  'Ice King': '/ice-king.webp',
+};
 const SUGGESTIONS = ['Who is Jake?', 'What are his skills?', 'Show me his projects', 'How can I contact him?'];
 const GREETING = "Hi, I'm BMO, Jake's Assistant! I'll be the one chatting with you since Jake is busy working. Ask me anything about him: his work, skills, projects, or how to reach him.";
 
@@ -124,7 +139,7 @@ export default function BmoChat() {
         setItems((cur) => cur.map((m) => (m.id === userItem.id ? { ...m, offTopic: true } : m)));
         result = { id: nextId.current++, kind: 'alert' };
       } else if (res.ok && data.reply) {
-        result = { id: nextId.current++, kind: 'bot', text: data.reply };
+        result = { id: nextId.current++, kind: 'bot', text: data.reply, character: data.character, section: data.section, links: data.links };
       } else {
         result = { id: nextId.current++, kind: 'error', text: data.error || 'BMO lost the signal. Try again!' };
       }
@@ -133,6 +148,15 @@ export default function BmoChat() {
     }
     setItems((cur) => [...cur, result]);
     setThinking(false);
+  };
+
+  // Phones: the chat covers the page, so close it to show the section.
+  const visitSection = (id: string) => {
+    const target = document.getElementById(id);
+    if (!target) return;
+    if (window.matchMedia('(max-width: 767px)').matches) setOpen(false);
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
   };
 
   const onlyGreeting = items.length === 1;
@@ -202,13 +226,38 @@ export default function BmoChat() {
                 ) : (
                   <motion.div key={m.id} className="flex items-end gap-2" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
                     <BmoAvatar />
-                    <p
-                      className={`max-w-[80%] rounded-2xl rounded-bl-sm border-2 px-3.5 py-2 text-sm whitespace-pre-line break-words ${
-                        m.kind === 'error' ? 'border-bmo-ink/40 bg-bmo-yellow/60 text-bmo-ink' : 'border-bmo-ink bg-white/70 text-bmo-ink'
-                      }`}
-                    >
-                      {renderText(m.text)}
-                    </p>
+                    <div className="max-w-[80%] min-w-0">
+                      <p
+                        className={`rounded-2xl rounded-bl-sm border-2 px-3.5 py-2 text-sm whitespace-pre-line break-words ${
+                          m.kind === 'error' ? 'border-bmo-ink/40 bg-bmo-yellow/60 text-bmo-ink' : 'border-bmo-ink bg-white/70 text-bmo-ink'
+                        }`}
+                      >
+                        {renderText(m.text)}
+                      </p>
+                      {m.kind === 'bot' && m.links?.map((l) => (
+                        <a
+                          key={l.url}
+                          href={l.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-1.5 mr-1.5 inline-flex items-center gap-1 rounded-full border-2 border-bmo-ink bg-bmo-blue px-2.5 py-0.5 text-xs font-semibold text-bmo-ink shadow-[0_2px_0_rgba(23,4,20,0.3)] hover:-translate-y-0.5 transition-transform"
+                        >
+                          {l.label} <ArrowUpRight size={13} strokeWidth={2.6} />
+                        </a>
+                      ))}
+                      {m.kind === 'bot' && m.section && m.character && (
+                        <button
+                          type="button"
+                          onClick={() => visitSection(m.section!)}
+                          className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border-2 border-bmo-ink bg-bmo-yellow pl-0.5 pr-2.5 py-0.5 text-xs font-semibold text-bmo-ink shadow-[0_2px_0_rgba(23,4,20,0.3)] hover:-translate-y-0.5 transition-transform"
+                        >
+                          {CHARACTER_IMG[m.character] && (
+                            <img src={CHARACTER_IMG[m.character]} alt="" aria-hidden="true" className="w-5 h-5 rounded-full bg-white object-cover object-top" />
+                          )}
+                          Visit {m.character}'s section <ArrowUpRight size={13} strokeWidth={2.6} />
+                        </button>
+                      )}
+                    </div>
                   </motion.div>
                 )
               )}
