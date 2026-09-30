@@ -448,3 +448,16 @@ button.glitch-btn { cursor: pointer; font-family: inherit; }
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* Themed section lands (SectionBackdrop): sweep in from the direction of travel. */
+.kingdom-backdrop {
+  transition:
+    clip-path 1s cubic-bezier(0.65, 0, 0.35, 1),
+    -webkit-clip-path 1s cubic-bezier(0.65, 0, 0.35, 1),
+    opacity 0.8s ease;
+  will-change: clip-path, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kingdom-backdrop { transition: opacity 0.4s ease; }
+}

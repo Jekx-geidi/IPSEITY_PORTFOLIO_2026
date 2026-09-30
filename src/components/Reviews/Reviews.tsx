@@ -1,5 +1,6 @@
 import { AnimatedAsset } from '../PortfolioMotion/PortfolioMotion';
 import { useSectionActive } from '../../activeSection';
+import SectionBackdrop from '../SectionBackdrop/SectionBackdrop';
 import type React from 'react';
 import { motion } from 'motion/react';
 import { BadgeCheck, Plus } from 'lucide-react';
@@ -321,10 +322,7 @@ const Reviews = () => {
     id="reviews"
     className={`relative overflow-hidden py-32 transition-colors duration-700 ${onSection ? 'dark text-fire-cream' : ''}`}
   >
-    <div
-      aria-hidden="true"
-      className={`pointer-events-none absolute inset-0 transition-opacity duration-700 bg-linear-to-b from-fire-ember via-[#3A0B05] to-[#7A1C06] ${onSection ? 'opacity-100' : 'opacity-0'}`}
-    >
+    <SectionBackdrop id="reviews" className="bg-linear-to-b from-fire-ember via-[#3A0B05] to-[#7A1C06]">
       {/* Fire Kingdom scene, dimmed and faded at the edges like the hero background */}
       <img
         src="/flame-bg.webp"
@@ -342,7 +340,7 @@ const Reviews = () => {
           style={{ left: `${left}%`, width: size, height: size, '--dur': `${dur}s`, '--delay': `${delay}s`, '--drift': `${drift}px` } as React.CSSProperties}
         />
       ))}
-    </div>
+    </SectionBackdrop>
 
     <div className="relative max-w-7xl mx-auto px-6">
       {/* Header: title + avatar stack, Flame Princess inspecting on the right */}

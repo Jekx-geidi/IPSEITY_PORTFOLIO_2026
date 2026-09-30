@@ -28,9 +28,6 @@ export default defineConfig(({mode}) => {
   if (env.GITHUB_TOKEN) process.env.GITHUB_TOKEN ??= env.GITHUB_TOKEN;
   return {
     plugins: [react(), tailwindcss(), devChatApi(env.OPENROUTER_API_KEY)],
-    define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

@@ -11,17 +11,33 @@ export const THEMED_SECTIONS = ['home', 'services', 'about', 'journey', 'educati
 
 export const ActiveSectionContext = createContext<string | null>(null);
 
+export type TravelDirection = 'down' | 'up';
+
+/**
+ * Where the visitor is travelling: the last themed section they were in (kept
+ * while they cross an unthemed gap) and which way they were scrolling.
+ */
+export const TravelContext = createContext<{ last: string | null; dir: TravelDirection }>({ last: null, dir: 'down' });
+
+export const useTravel = () => useContext(TravelContext);
+
 /** True while the user is in the section with this id. */
 export const useSectionActive = (id: string) => useContext(ActiveSectionContext) === id;
 
 export const useActiveSection = () => useContext(ActiveSectionContext);
 
-/** Observe the themed sections and return the id of the one currently on screen. */
+/**
+ * Observe the themed sections: the id of the one currently on screen, the last
+ * one visited, and the scroll direction when the band last changed.
+ */
 export function useTrackActiveSection(ids: readonly string[] = THEMED_SECTIONS) {
-  const [active, setActive] = useState<string | null>(null);
+  const [state, setState] = useState<{ active: string | null; last: string | null; dir: TravelDirection }>(
+    { active: null, last: null, dir: 'down' }
+  );
 
   useEffect(() => {
     const inBand = new Set<string>();
+    let lastY = window.scrollY;
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
@@ -29,7 +45,11 @@ export function useTrackActiveSection(ids: readonly string[] = THEMED_SECTIONS) 
           else inBand.delete(entry.target.id);
         }
         // At a boundary two sections can touch the band; prefer the later one.
-        setActive(ids.filter((id) => inBand.has(id)).pop() ?? null);
+        const active = ids.filter((id) => inBand.has(id)).pop() ?? null;
+        const y = window.scrollY;
+        const dir: TravelDirection | null = y === lastY ? null : y > lastY ? 'down' : 'up';
+        lastY = y;
+        setState((prev) => ({ active, last: active ?? prev.last, dir: dir ?? prev.dir }));
       },
       { rootMargin: '-45% 0px -54% 0px' }
     );
@@ -40,5 +60,5 @@ export function useTrackActiveSection(ids: readonly string[] = THEMED_SECTIONS) 
     return () => observer.disconnect();
   }, [ids]);
 
-  return active;
+  return state;
 }

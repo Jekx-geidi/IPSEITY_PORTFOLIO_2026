@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { ActiveSectionContext, useActiveSection, useSectionActive, useTrackActiveSection } from './activeSection';
+import { ActiveSectionContext, TravelContext, useActiveSection, useSectionActive, useTrackActiveSection } from './activeSection';
+import SectionBackdrop from './components/SectionBackdrop/SectionBackdrop';
+import KingdomTravel from './components/KingdomTravel/KingdomTravel';
 import { AnimatedAsset } from './components/PortfolioMotion/PortfolioMotion';
 import Logo from './components/Logo/Logo';
 import Reviews from './components/Reviews/Reviews';
@@ -12,21 +14,17 @@ import NumberTicker from './components/NumberTicker/NumberTicker';
 import { DiaTextReveal } from './components/DiaTextReveal/DiaTextReveal';
 import { 
   Linkedin, 
-  Instagram, 
-  Dribbble, 
+  Instagram,  
   Plus, 
   Minus, 
   ArrowUpRight, 
   ChevronLeft,
-  ChevronDown,
   ChevronRight,
   Mail,
-  MapPin,
   Phone,
   Facebook,
   Github,
   Download,
-  Heading1,
   Code2,
   Layers,
   Database,
@@ -36,7 +34,8 @@ import {
   Menu,
   X,
   Play,
-  Pause
+  Pause,
+  Lock
 } from 'lucide-react';
 
 // --- Components ---
@@ -93,17 +92,6 @@ const RESUME_THEMES: Record<string, string> = {
   contact:   'bg-ik-crown text-ik-navy border-2 border-ik-navy shadow-ik-crown/40',
 };
 const RESUME_DEFAULT = 'title-bg text-white border-2 border-transparent shadow-title/30';
-
-// Full-bleed themed background that fades in only while its section is current.
-// Parent section must be `relative`, and its content `relative` so it paints above.
-const SectionBackdrop = ({ show, className = "", children }: { show: boolean, className?: string, children?: React.ReactNode }) => (
-  <div
-    aria-hidden="true"
-    className={`pointer-events-none absolute inset-0 transition-opacity duration-700 ${show ? 'opacity-100' : 'opacity-0'} ${className}`}
-  >
-    {children}
-  </div>
-);
 
 // Shared by the navbar (desktop row + mobile menu) and the footer.
 const NAV_LINKS = [
@@ -573,7 +561,6 @@ const Hero = () => {
 
 const ServiceAccordion = () => {
   const [expanded, setExpanded] = useState<number | null>(1);
-  const onSection = useSectionActive('services');
 
   const services = [
     { id: 0, title: "Branding", desc: "Crafting unique visual identities that resonate with your audience and stand the test of time." },
@@ -588,7 +575,7 @@ const ServiceAccordion = () => {
     // BMO-themed: body-teal backdrop, screen-cream cards with BMO's line-art
     // outline and a hard cartoon shadow, D-pad / big-pink-button toggles.
     <section id="services" className="relative overflow-hidden py-32 px-6 text-bmo-ink">
-      <SectionBackdrop show={onSection} className="bg-linear-to-b from-bmo to-bmo-shade">
+      <SectionBackdrop id="services" className="bg-linear-to-b from-bmo to-bmo-shade">
         {/* Tree Fort scene, dimmed and faded at the edges like the hero background */}
         <img
           src="/bmo-bg.webp"
@@ -691,7 +678,7 @@ const AboutStats = () => {
 
   return (
   <section id="about" className="py-32 px-6 relative overflow-hidden">
-    <SectionBackdrop show={onSection} className="bg-linear-to-b from-finn-shirt to-finn-shorts">
+    <SectionBackdrop id="about" className="bg-linear-to-b from-finn-shirt to-finn-shorts">
       {/* Finn background scene, dimmed and faded at the edges like the hero background */}
       <img
         src="/finn-bg.webp"
@@ -809,7 +796,7 @@ const JourneyTimeline = () => {
       id="journey"
       className={`relative scroll-mt-24 py-32 px-6 overflow-hidden transition-colors duration-700 ${onSection ? 'dark text-marcy-skin' : ''}`}
     >
-      <SectionBackdrop show={onSection} className="bg-linear-to-b from-marcy-hair via-[#15123A] to-marcy-jeans/80">
+      <SectionBackdrop id="journey" className="bg-linear-to-b from-marcy-hair via-[#15123A] to-marcy-jeans/80">
         {/* Marceline background scene, dimmed and faded at the edges like the hero background */}
         <img
           src="/marceline-bg.webp"
@@ -961,7 +948,7 @@ const Education = () => {
       id="education"
       className={`relative overflow-hidden scroll-mt-24 py-32 px-6 transition-colors duration-700 ${onSection ? 'gunter bg-gunter-belly' : 'bg-transparent'}`}
     >
-      <SectionBackdrop show={onSection}>
+      <SectionBackdrop id="education">
         {/* Snowy mountain scene, dimmed and faded at the edges like the hero background */}
         <img
           src="/gunter-bg.webp"
@@ -1077,22 +1064,23 @@ const PortfolioIntro = () => (
 );
 
 // Princess Bubblegum-themed while current: candy-pink lab backdrop, magenta
-// lettering, and a bento grid — one featured project plus five supporting ones.
+// lettering, and a bento grid — one featured project plus the supporting ones.
 const Portfolio = () => {
-  const onSection = useSectionActive('portfolio');
-  const projects = [
-    { title: "Before you Dig Australia", category: "Mining Documentation Automation System", img: "/BYDA.png" },
+  // Projects without a `url` are private: no link, shown with a "Private Project" badge.
+  const projects: { title: string; category: string; img: string; url?: string }[] = [
+    { title: "Before you Dig Australia", category: "Mining Documentation Automation System", img: "/BYDA.png", url: "https://byda-frontend-268992122217.australia-southeast1.run.app/login" },
     { title: "PNPh Tourna Website", category: "Tournament Website", img: "/TOUR.png" },
-    { title: "MAAI WebApp Project", category: "SEO AI Agent", img: "/maai.png" },
-    { title: "LostLink WebApp Project", category: "Lost and Found Management", img: "/Web App.png" },
-    { title: "Wendears Cake", category: "E-Commerce Website", img: "/Wendears.png" },
-    { title: "Tourmate", category: "AI Travel Companion App", img: "/Tourmate'.png" },
-    { title: "COMS.AI", category: "Cebu Outage Monitoring System", img: "/COMS.png" }
+    { title: "MAAI WebApp Project", category: "SEO AI Agent", img: "/maai.png", url: "https://kriti-maai-790275471938.australia-southeast1.run.app/" },
+    { title: "LostLink WebApp Project", category: "Lost and Found Management", img: "/Web App.png", url: "https://paknaan-lost-link.vercel.app/" },
+    { title: "Wendears Cake", category: "E-Commerce Website", img: "/Wendears.png", url: "https://wendears-cake.vercel.app/" },
+    { title: "Tourmate", category: "AI Travel Companion App", img: "/Tourmate'.png", url: "https://tour-mate-ai-game-agent.vercel.app/" },
+    { title: "COMS.AI", category: "Cebu Outage Monitoring System", img: "/COMS.png", url: "https://coms-ai.vercel.app/" },
+    { title: "PLAYPANDA", category: "Sports & E-Sports Tournament Site", img: "/PLAYPANDA.png" }
   ];
 
   return (
     <section id="portfolio" className="relative py-32 px-6 overflow-hidden">
-      <SectionBackdrop show={onSection} className="bg-linear-to-b from-pb-skin via-[#FEE6F7] to-pb-skin">
+      <SectionBackdrop id="portfolio" className="bg-linear-to-b from-pb-skin via-[#FEE6F7] to-pb-skin">
         {/* Candy Kingdom scene, dimmed and faded at the edges like the hero background */}
         <img
           src="/bubblegum-bg.webp"
@@ -1136,16 +1124,25 @@ const Portfolio = () => {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 lg:auto-rows-[270px]">
           {projects.map((project, i) => {
             const featured = i === 0;
-            // On lg the featured card fills 4 cells; a lone card left on the last row spans it.
-            const lgOrphan = i === projects.length - 1 && (projects.length + 3) % 3 === 1;
+            const isPrivate = !project.url;
+            // The featured card fills a full md row and 4 lg cells; stretch the last
+            // card across whatever is left empty on the final row.
+            const last = i === projects.length - 1;
+            const mdFill = last && (projects.length - 1) % 2 === 1 ? 'md:col-span-2' : '';
+            const lgLeft = (projects.length + 3) % 3;
+            const lgFill = last ? (lgLeft === 1 ? 'lg:col-span-3' : lgLeft === 2 ? 'lg:col-span-2' : '') : '';
             return (
               <FadeIn
                 key={project.title}
                 delay={i * 0.08}
-                className={featured ? 'md:col-span-2 lg:row-span-2' : lgOrphan ? 'lg:col-span-3' : ''}
+                className={featured ? 'md:col-span-2 lg:row-span-2' : `${mdFill} ${lgFill}`}
               >
-                <div data-motion-card
-                className={`group relative h-full ${featured ? 'min-h-[420px]' : 'min-h-[300px] lg:min-h-0'} rounded-[2rem] overflow-hidden border-[3px] border-pb-ink bg-white cursor-pointer shadow-[6px_6px_0_var(--color-pb-magenta)] hover:shadow-[10px_10px_0_var(--color-pb-magenta)] transition-shadow duration-300`}>
+                <a data-motion-card
+                href={project.url}
+                target={isPrivate ? undefined : '_blank'}
+                rel={isPrivate ? undefined : 'noopener noreferrer'}
+                aria-label={isPrivate ? `${project.title} (private project)` : `Open ${project.title} in a new tab`}
+                className={`group relative block h-full ${featured ? 'min-h-[420px]' : 'min-h-[300px] lg:min-h-0'} rounded-[2rem] overflow-hidden border-[3px] border-pb-ink bg-white ${isPrivate ? 'cursor-default' : 'cursor-pointer'} shadow-[6px_6px_0_var(--color-pb-magenta)] hover:shadow-[10px_10px_0_var(--color-pb-magenta)] transition-shadow duration-300`}>
                   <img
                     src={project.img}
                     alt={project.title}
@@ -1165,14 +1162,21 @@ const Portfolio = () => {
 
                   <div className="absolute inset-x-0 bottom-0 p-6 md:p-7 flex items-end justify-between gap-4">
                     <div>
+                      {isPrivate && (
+                        <p className="mb-2 inline-flex items-center gap-1.5 rounded-full border-2 border-pb-ink bg-pb-crown px-3 py-1 text-[10px] md:text-xs font-bold uppercase tracking-widest text-pb-ink">
+                          <Lock size={12} /> Private Project
+                        </p>
+                      )}
                       {featured && <p className="text-xs font-bold uppercase tracking-widest text-pb-skin mb-2">Featured project</p>}
                       <h3 className={`font-display font-bold leading-tight text-white ${featured ? 'text-3xl md:text-5xl' : 'text-2xl'}`}>{project.title}</h3>
                     </div>
-                    <span className="w-12 h-12 shrink-0 rounded-full bg-pb-pink border-[3px] border-pb-ink text-white flex items-center justify-center transition-transform duration-300 group-hover:rotate-45">
-                      <ArrowUpRight size={20} />
-                    </span>
+                    {!isPrivate && (
+                      <span className="w-12 h-12 shrink-0 rounded-full bg-pb-pink border-[3px] border-pb-ink text-white flex items-center justify-center transition-transform duration-300 group-hover:rotate-45">
+                        <ArrowUpRight size={20} />
+                      </span>
+                    )}
                   </div>
-                </div>
+                </a>
               </FadeIn>
             );
           })}
@@ -1297,7 +1301,7 @@ const ToolsSection = () => {
 
   return (
     <section id="tools" className="relative overflow-hidden py-28 px-6">
-      <SectionBackdrop show={onSection} className="bg-linear-to-b from-rain-blush via-white to-[#EEF3FF]">
+      <SectionBackdrop id="tools" className="bg-linear-to-b from-rain-blush via-white to-[#EEF3FF]">
         {/* rainbow band across the top */}
         <div className="absolute inset-x-0 top-0 flex h-2">
           {rainbowStripes.map((v) => <span key={v} className="flex-1" style={{ background: `var(${v})` }} />)}
@@ -1479,7 +1483,7 @@ const FAQ = () => {
 
   return (
     <section id="faq" className="relative py-32 px-6 overflow-hidden">
-      <SectionBackdrop show={onSection} className="bg-linear-to-b from-lsp-mist via-[#E4D2F3] to-lsp-mist">
+      <SectionBackdrop id="faq" className="bg-linear-to-b from-lsp-mist via-[#E4D2F3] to-lsp-mist">
         {/* Lumpy Space scene, dimmed and faded at the edges like the hero background */}
         <img
           src="/faq-bg.webp"
@@ -1586,7 +1590,7 @@ const Contact = () => {
 
   return (
   <section id="contact" className={`py-32 px-6 relative overflow-hidden transition-colors duration-700 ${onSection ? 'dark text-white' : ''}`}>
-    <SectionBackdrop show={onSection} className="bg-linear-to-b from-ik-navy via-ik-robe/80 to-ik-navy">
+    <SectionBackdrop id="contact" className="bg-linear-to-b from-ik-navy via-ik-robe/80 to-ik-navy">
       {/* Ice Kingdom scene, dimmed and faded at the edges like the hero background */}
       <img
         src="/contact-bg.webp"
@@ -1735,7 +1739,8 @@ const Footer = () => (
 );
 
 export default function PortfolioPage() {
-  const activeSection = useTrackActiveSection();
+  const { active: activeSection, last: lastSection, dir: travelDir } = useTrackActiveSection();
+  const travel = useMemo(() => ({ last: lastSection, dir: travelDir }), [lastSection, travelDir]);
 
   useEffect(() => {
     document.documentElement.style.scrollBehavior = 'smooth';
@@ -1749,6 +1754,7 @@ export default function PortfolioPage() {
 
   return (
     <ActiveSectionContext.Provider value={activeSection}>
+    <TravelContext.Provider value={travel}>
     <div className="relative min-h-screen overflow-x-clip bg-bg text-ink selection:bg-accent-start selection:text-white">
       <div className="fixed inset-0 z-0 pointer-events-none bg-linear-to-b from-white to-accent-start/40" />
       <Navbar />
@@ -1768,8 +1774,10 @@ export default function PortfolioPage() {
       <div className="relative z-10">
         <Footer />
       </div>
+      <KingdomTravel />
       <BmoChat />
     </div>
+    </TravelContext.Provider>
     </ActiveSectionContext.Provider>
   );
 }

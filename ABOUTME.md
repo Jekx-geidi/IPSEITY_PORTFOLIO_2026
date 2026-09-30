@@ -109,9 +109,10 @@ Science curriculum, which gave me the academic foundation for a technical and cr
 | **MAAI WebApp** | SEO AI agent |
 | **Tourmate** | AI travel companion app |
 | **LostLink WebApp** | Lost-and-found management system |
-| **PNPh Tourna Website** | Tournament website |
+| **PNPh Tourna Website** | Tournament website (private project) |
 | **Wendears Cake** | E-commerce website |
 | **COMS.AI** | Cebu Outage Monitoring System — real-time dashboard and live map of Cebu power interruptions, with Locate Me and an Ask COMS AI assistant |
+| **PLAYPANDA** | Sports and e-sports tournament community site (private project) |
 
 ---
 
