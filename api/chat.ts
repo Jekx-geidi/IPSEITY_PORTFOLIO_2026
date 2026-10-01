@@ -29,7 +29,7 @@ const detectLang = (text: string): Lang => {
   const tl = text.match(TL_WORDS)?.length ?? 0;
   return ceb === 0 && tl === 0 ? 'en' : ceb >= tl ? 'ceb' : 'tl';
 };
-const LANGUAGE_RULE = 'Reply in the same language the visitor wrote in: English, Cebuano (Bisaya), or Tagalog. If they mix in English (Bislish / Taglish), mirror that mix. For any other language, reply in English.';
+const LANGUAGE_RULE = 'Reply in the same language the visitor wrote in: English, Cebuano (Bisaya), or Tagalog. If they mix in English (Bislish / Taglish), mirror that mix. Never mix Cebuano and Tagalog in one reply: Cebuano says "karon", "iya", "kaayo", "siya kay"; Tagalog says "ngayon", "kanya", "talaga", "siya ay". For any other language, reply in English.';
 
 // When a question names one project, Bubblegum reads that repo's README instead.
 const REPO_OPENING: Record<Lang, string> = {
@@ -159,7 +159,7 @@ const CONTACT_PATTERN = /\b(contact|reach (him|jake)|e-?mail|phone|linkedin|get 
 
 // Girlfriend questions get their own model call at a high temperature so BMO never says it the
 // same way twice. If the model is down, BMO picks one of the fixed lines instead.
-const GIRLFRIEND_PATTERN = /\b(girl\s*friend|gf|jowa|wife|lover|sweetheart|love\s*life|dating|in a relationship|relationship status|crush|jessa|montebon|is\s+(he|jake)\s+(still\s+)?(single|taken)|(he|jake)('s|\s+is)\s+(still\s+)?(single|taken)|(his|jake's)\s+(life\s+)?partner|uyab|kasintahan|nobya|ka-?relasyon|(single|taken)\s+(pa\s+)?(ba\s+)?(si\s+jake|siya))\b/i;
+const GIRLFRIEND_PATTERN = /\b(girl\s*friend|gf|jowa|wife|lover|sweetheart|love\s*life|dating|in a relationship|relationship status|crush|jessa|montebon|is\s+(he|jake)\s+(still\s+)?(single|taken)|(he|jake)('s|\s+is)\s+(still\s+)?(single|taken)|(his|jake's)\s+(life\s+)?partner|uyab|kasintahan|nobya|kabit|kerida|querida|mistress|side\s*chick|ka-?relasyon|(single|taken)\s+(pa\s+)?(ba\s+)?(si\s+jake|siya))\b/i;
 const GIRLFRIEND_FACTS = `Jake's girlfriend is Ate Jessa Montebon. She's kinda pretty and has a kind heart. She has supported Jake all through his life and is always there for him.`;
 const GIRLFRIEND_LINES = [
   "It's Ate Jessa Montebon! She's kinda pretty, and has a kind heart, who supported Jake all over his life. She's always there for Jake.",
@@ -169,7 +169,24 @@ const GIRLFRIEND_LINES = [
   "Ate Jessa Montebon! She's always been there for Jake, supporting him all his life. Kinda pretty, and a really kind heart too.",
 ];
 const pick = (lines: string[]) => lines[Math.floor(Math.random() * lines.length)];
-const randomLine = () => pick(GIRLFRIEND_LINES);
+// "Kabit" (mistress / side chick) questions: BMO shuts them down, Jake is loyal to Ate Jessa.
+const KABIT_RE = /\b(kabit|kerida|querida|mistress|side\s*chick|other\s+(woman|girl)|babae\s+niya|ibang\s+babae|laing\s+babaye)\b/i;
+const KABIT_LINES: Record<Lang, string[]> = {
+  en: [
+    "Jake doesn't have a side chick! He's loyal to Ate Jessa Montebon only.",
+    'No such thing! Jake only has eyes for Ate Jessa Montebon, his girlfriend.',
+  ],
+  ceb: [
+    'Walay kabit si Jake uy! Loyal siya kay Ate Jessa Montebon ra, iyang uyab.',
+    'Wala gyud! Si Ate Jessa Montebon ra ang uyab ni Jake, ug loyal kaayo siya niya.',
+  ],
+  tl: [
+    'Walang kabit si Jake! Loyal siya kay Ate Jessa Montebon lang, ang girlfriend niya.',
+    'Wala talaga! Si Ate Jessa Montebon lang ang kasintahan ni Jake, at loyal siya sa kanya.',
+  ],
+};
+const randomLine = (question: string) =>
+  KABIT_RE.test(question) ? pick(KABIT_LINES[detectLang(question)]) : pick(GIRLFRIEND_LINES);
 
 // Family questions work the same way. Each fallback answers just the part that was asked.
 const FAMILY_PATTERN = /\b(family|families|surname|last name|family name|relatives?|parents?|mom|moms|mommy|mother|mama|nanay|dad|daddy|father|papa|tatay|step\s*-?\s*(dad|father|parents?|siblings?|brothers?|sisters?|mom|mother)|siblings?|brothers?|sisters?|ate|kuya|cousins?|myrna|stephanie|roelito|johnlyn|enopia|rosemarie|ranilyn|rommel|kyzer|kjeona|keziah|ryle|syke|tolero|rohan|rania|vaughn|pamilya|apelyido|ginikanan|magulang|inahan|inay|amahan|itay|igsoon|kapatid|manghod|ig-?agaw|pinsan|amain|ama-ama|madrasta)\b/i;
@@ -355,13 +372,14 @@ const contactResult = (lang: Lang): ChatResult => ({
 
 // Personal questions (girlfriend, family) are answered from fixed facts, worded fresh each time
 // (no seed, high temperature). `valid` rejects a reply that drifted off the facts; `fallback` covers that and outages.
-type Personal = { kind: 'girlfriend' | 'family' | 'life'; rules: string; valid: RegExp; fallback: (question: string) => string };
+type Personal = { kind: 'girlfriend' | 'family' | 'life'; rules: string; valid: (reply: string) => boolean; fallback: (question: string) => string };
 
 const GIRLFRIEND: Personal = {
   kind: 'girlfriend',
   rules: `A visitor is asking about Jake's girlfriend. Facts: ${GIRLFRIEND_FACTS}
-Always call her "Ate Jessa Montebon". If they ask whether Jake is single, say he's taken. Never invent other details (age, looks beyond the facts, how they met).`,
-  valid: /jessa/i,
+Always call her "Ate Jessa Montebon" and call her his girlfriend (Cebuano: "uyab", Tagalog: "girlfriend" or "kasintahan"). NEVER call her a kabit, kerida, mistress, side chick, or "other woman". If the visitor asks about Jake's kabit, mistress, side chick, or another girl, say clearly that Jake has none: he is loyal and faithful to Ate Jessa only. If they ask whether Jake is single, say he's taken. Never invent other details (age, looks beyond the facts, how they met).`,
+  // Must name her, and must not call anyone his kabit unless it's to deny it.
+  valid: (r) => /jessa/i.test(r) && (!KABIT_RE.test(r) || /\b(wala|walay|way|dili|hindi|no|none|never|doesn't|does not|walang)\b/i.test(r)),
   fallback: randomLine,
 };
 
@@ -370,7 +388,7 @@ const FAMILY: Personal = {
   rules: `A visitor is asking about Jake's family. Facts:
 ${FAMILY_FACTS}
 Answer only the part they asked about (e.g. just his dad if they ask about his dad); give the whole family only if they ask about his family in general. Use the full names as written. Never invent other details (ages, jobs, where they live).`,
-  valid: FAMILY_NAMES,
+  valid: (r) => FAMILY_NAMES.test(r),
   fallback: familyLine,
 };
 
@@ -379,7 +397,7 @@ const LIFE: Personal = {
   get rules() { return `A visitor is asking about Jake's personal life. Facts:
 ${lifeFacts()}
 Answer only the part they asked about (e.g. just his favourite food if they ask about food). If they ask where he lives, give the full address exactly as written. Never invent other details.`; },
-  valid: /\b(paknaan|mandaue|november|nov|nobyembre|2005|birthday|kaarawan|red|black|white|pula|itom|itim|puti|shrimp|hipon|pasayan|guitar|gitara|art|arte|music|musika|travel|design|tech)\b/i,
+  valid: (r) => /\b(paknaan|mandaue|november|nov|nobyembre|2005|birthday|kaarawan|red|black|white|pula|itom|itim|puti|shrimp|hipon|pasayan|guitar|gitara|art|arte|music|musika|travel|design|tech)\b/i.test(r),
   fallback: lifeLine,
 };
 
@@ -413,7 +431,7 @@ Answer their exact question warmly and playfully in 1 to 3 short sentences, usin
     });
     const data = res.ok ? await res.json() : null;
     const reply = String(data?.choices?.[0]?.message?.content ?? '').trim().replace(/^"|"$/g, '');
-    return done(reply && p.valid.test(reply) ? reply : p.fallback(question));
+    return done(reply && p.valid(reply) ? reply : p.fallback(question));
   } catch (err) {
     console.error(`${p.kind} reply failed`, err);
     return done(p.fallback(question));
