@@ -22,7 +22,8 @@ const THINKING_LINES = [
 ];
 // "Where is Jake now?" is answered from his phone's last check-in (api/where.ts), not the model.
 // "Where is Jake from / based / studying…" still goes to the API.
-const WHERE_RE = /\bwhere\s*(is|'s|s)\s*(jake|riel|reil|he)\b(?!\s*(from|based|study|studying|work|working|living|live)\b)/i;
+// Cebuano "asa na si Jake (karon)?" and Tagalog "nasaan si Jake (ngayon)?" count too.
+const WHERE_RE = /\bwhere\s*(is|'s|s)\s*(jake|riel|reil|he)\b(?!\s*(from|based|study|studying|work|working|living|live)\b)|\basa\s+(na\s+)?(si\s+jake|siya)\b(?!\s+(gikan|nagpuyo|nakapuyo|puyo|nag-?eskwela|nagtrabaho)\b)|\bnasaan\s+(na\s+)?(si\s+jake|siya)\b/i;
 const TRACKING_LINES = [
   "Tracking Jake's location right now…",
   "Pinging Jake's phone…",
@@ -40,14 +41,20 @@ const timeAgo = (at: number) => {
   return days === 1 ? 'yesterday' : `${days} days ago`;
 };
 
-const trackJake = async (): Promise<string> => {
+const trackJake = async (question: string): Promise<string> => {
   const [data] = await Promise.all([
     fetch('/api/where').then((r) => (r.ok ? r.json() : null)).catch(() => null),
     new Promise((r) => setTimeout(r, MIN_TRACKING_MS)),
   ]);
-  if (!data) return "BMO's tracker lost the signal. Try again in a moment!";
-  if (!data.place) return "Jake's phone hasn't checked in yet, so BMO can't find him right now.";
-  return `Found him! Jake is in **${data.place}, ${data.country}** right now. (Last check-in: ${timeAgo(data.at)}.)`;
+  const lang = /\basa\b/i.test(question) ? 'ceb' : /\bnasaan\b/i.test(question) ? 'tl' : 'en';
+  if (!data) return { en: "BMO's tracker lost the signal. Try again in a moment!", ceb: 'Nawala ang signal sa tracker ni BMO. Sulayi balik kadiyot!', tl: 'Nawalan ng signal ang tracker ni BMO. Subukan ulit mamaya!' }[lang];
+  if (!data.place) return { en: "Jake's phone hasn't checked in yet, so BMO can't find him right now.", ceb: 'Wala pa nag-check in ang phone ni Jake, mao nga dili pa siya makit-an ni BMO karon.', tl: 'Hindi pa nag-check in ang phone ni Jake, kaya hindi pa siya mahanap ni BMO ngayon.' }[lang];
+  const where = `**${data.place}, ${data.country}**`;
+  return {
+    en: `Found him! Jake is in ${where} right now. (Last check-in: ${timeAgo(data.at)}.)`,
+    ceb: `Nakit-an na nako siya! Naa si Jake sa ${where} karon. (Last check-in: ${timeAgo(data.at)}.)`,
+    tl: `Nahanap ko na siya! Nasa ${where} si Jake ngayon. (Last check-in: ${timeAgo(data.at)}.)`,
+  }[lang];
 };
 // Who BMO went to ask (api/chat.ts GUIDES), shown on the "Visit … section" chip.
 const CHARACTER_IMG: Record<string, string> = {
@@ -68,29 +75,31 @@ const BYE_GIFS = [
   'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMTNna2M5YzZtbDQwMXhiMGRqa2hpNXF3amp4NzN2ZWN0ZThkcGRxbCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/fYARMNtQu7N5lfMWOk/giphy.gif',
   'https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3aWI0dGx3MjF3eW1zYzJuYmhwdnlyejBxeG8ybjE5MWZnMW9uZmMydiZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/H68qSZkEG9qw39YvRD/giphy.gif',
 ];
-const BYE_RE = /^(good\s*)?bye+(\s*bye+)*(\s+bmo)?[\s!.~]*$/i;
+// The quick replies below also understand Cebuano and Tagalog.
+const BYE_RE = /^((good\s*)?bye+(\s*bye+)*|ba+bay|paalam|amping|ingat)(\s+(na|ka|kayo|bmo))*[\s!.~]*$/i;
 // Thanks and compliments make BMO happy: same treatment, one happy GIF.
 const HAPPY_GIF = 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbnJpOWZobWxzcmp2cWVmZXg2YWc0MTY3NDVzYWpuc2R3eXpjNWV6MyZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/lOHus6F5z7Ftzpm4jS/giphy.gif';
-const HAPPY_RE = /^(thanks?( you)?( so much)?|thx|ty|tysm|you'?re (so )?(cute|awesome|amazing|the best|great|cool)|(so )?(cute|awesome|amazing|cool|nice|great|perfect)|good (job|work)|well done|good bmo)(\s+bmo)?[\s!.~<3]*$/i;
+const HAPPY_RE = /^(thanks?( you)?( so much)?|thx|ty|tysm|(daghang |maraming )?salamat( kaayo| po)?|ang (cute|galing) mo|nindot kaayo|galing|you'?re (so )?(cute|awesome|amazing|the best|great|cool)|(so )?(cute|awesome|amazing|cool|nice|great|perfect)|good (job|work)|well done|good bmo)(\s+bmo)?[\s!.~<3]*$/i;
 // Asking BMO to dance (or for a party) gets the dancing GIF.
 const DANCE_GIF = 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbnJpOWZobWxzcmp2cWVmZXg2YWc0MTY3NDVzYWpuc2R3eXpjNWV6MyZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/aLI73eIgT41b2/giphy.gif';
-const DANCE_RE = /\b(dance|dancing|party|boogie)\b/i;
+const DANCE_RE = /\b(dance|dancing|party|boogie|sayaw|sumayaw|magsayaw|indak)\b/i;
 // "I love you" gets its own GIF (checked before the happy one).
 const LOVE_GIF = 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbnJpOWZobWxzcmp2cWVmZXg2YWc0MTY3NDVzYWpuc2R3eXpjNWV6MyZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/h5tnH6Em0i5GZgeTTI/giphy.gif';
-const LOVE_RE = /^(i\s*)?(love\s*(you|u)|ily)(\s*(so much|too|bmo))*[\s!.~<3]*$/i;
+const LOVE_RE = /^((i\s*)?(love\s*(you|u)|ily)|love\s+tika|gihigugma\s+tika|mahal\s+kita)(\s*(so much|too|bmo|kaayo|din|rin))*[\s!.~<3]*$/i;
 // Insults make BMO angry.
 const ANGRY_GIF = 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbnJpOWZobWxzcmp2cWVmZXg2YWc0MTY3NDVzYWpuc2R3eXpjNWV6MyZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/gdkzWXPgfQIBb8Eywn/giphy.gif';
-const ANGRY_RE = /\b(stupid|dumb|idiot|useless|ugly|trash|garbage|shut up|i hate (you|u|bmo)|hate you|you suck|bmo sucks)\b/i;
+const ANGRY_RE = /\b(stupid|dumb|idiot|useless|ugly|trash|garbage|shut up|i hate (you|u|bmo)|hate you|you suck|bmo sucks|bobo|tanga|buang|boang|yawa|gago|pangit|walay\s+pulos|walang\s+kwenta)\b/i;
 // Shown in the thinking bubble while BMO waits on the answer.
 const WAITING_GIF = 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExYXdxZ3RqN2F4OXdpYjk2MXBlNWdjczN1cDRycTdxd3l6YzE5ZW5uMCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/JmPabUqU22FAbQYkzN/giphy.gif';
 // When the profile doesn't cover a question, api/chat.ts answers "Jake hasn't shared that one yet…"; BMO shrugs along.
 const DUNNO_GIF = 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbnJpOWZobWxzcmp2cWVmZXg2YWc0MTY3NDVzYWpuc2R3eXpjNWV6MyZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/JmPabUqU22FAbQYkzN/giphy.gif';
-const DUNNO_RE = /hasn't shared that/i;
+const DUNNO_RE = /hasn't shared that|wala pa ni nag-share|hindi pa ito naibabahagi/i;
 // Questions about Jake's girlfriend come back flagged `girlfriend` (api/chat.ts) and get this GIF.
 const GIRLFRIEND_GIF = 'https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3YWVjZ3J2bHQ1d291OTZpNXZqZmszbWFiYmd1eGF2Yjd4ZWg0dzZkbSZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/6rslXNsiJxwme5Xjyg/giphy.gif';
 // "Who is …?" GIFs. Jake and BMO still go to the API and the GIF rides along under the answer;
 // the other characters aren't about Jake (the API would flag them off-topic), so BMO answers with just the GIF.
-const WHO_IS = String.raw`\bwho\s*(is|'s|s|are|r)\s*(u\s+|you\s+)?`;
+// English "who is …", Cebuano "kinsa (si|ka) …", Tagalog "sino (si|ka) …".
+const WHO_IS = String.raw`(\bwho\s*(is|'s|s|are|r)\s*(u\s+|you\s+)?|\b(kinsa|sino)\s+(ba\s+)?(si\s+|ang\s+|ka\b\s*)?)`;
 const WHO_GIFS: { re: RegExp; src: string; alt: string; local?: boolean }[] = [
   {
     re: new RegExp(WHO_IS + String.raw`(jake|riel|reil|he)\b`, 'i'),
@@ -98,7 +107,7 @@ const WHO_GIFS: { re: RegExp; src: string; alt: string; local?: boolean }[] = [
     alt: 'BMO introducing Jake',
   },
   {
-    re: new RegExp(WHO_IS + String.raw`(bmo|you|u)\b`, 'i'),
+    re: new RegExp(WHO_IS + String.raw`(bmo|you|u)\b|\b(kinsa|sino)\s+(ba\s+)?ka\b`, 'i'),
     src: 'https://media.tenor.com/EwQ5ZIES3BAAAAAC/bmo-adventure-time.gif',
     alt: 'BMO saying hi',
   },
@@ -141,7 +150,7 @@ const WHO_GIFS: { re: RegExp; src: string; alt: string; local?: boolean }[] = [
 ];
 const whoGif = (text: string) => WHO_GIFS.find((g) => g.re.test(text));
 const SUGGESTIONS = ['Who is Jake?', 'What are his skills?', 'Show me his projects', 'How can I contact him?'];
-const GREETING = "Hi, I'm BMO, Jake's Assistant! I'll be the one chatting with you since Jake is busy working. Ask me anything about him: his work, skills, projects, or how to reach him.";
+const GREETING = "Hi, I'm BMO, Jake's Assistant! I'll be the one chatting with you since Jake is busy working. Ask me anything about him: his work, skills, projects, or how to reach him. You can ask in English, Cebuano, or Tagalog!";
 
 // The model sometimes answers with **bold**; render that, leave everything else as text.
 const renderText = (text: string) =>
@@ -239,7 +248,7 @@ export default function BmoChat() {
     if (WHERE_RE.test(text)) {
       setItems((cur) => [...cur, { id: nextId.current++, kind: 'user', text, local: true }]);
       setThinking('track');
-      const reply = await trackJake();
+      const reply = await trackJake(text);
       setItems((cur) => [...cur, { id: nextId.current++, kind: 'bot', text: reply, local: true }]);
       setThinking(false);
       return;
