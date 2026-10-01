@@ -86,9 +86,8 @@ const DANCE_RE = /\b(dance|dancing|party|boogie|sayaw|sumayaw|magsayaw|indak)\b/
 // "I love you" gets its own GIF (checked before the happy one).
 const LOVE_GIF = 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbnJpOWZobWxzcmp2cWVmZXg2YWc0MTY3NDVzYWpuc2R3eXpjNWV6MyZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/h5tnH6Em0i5GZgeTTI/giphy.gif';
 const LOVE_RE = /^((i\s*)?(love\s*(you|u)|ily)|love\s+tika|gihigugma\s+tika|mahal\s+kita)(\s*(so much|too|bmo|kaayo|din|rin))*[\s!.~<3]*$/i;
-// Insults make BMO angry.
-const ANGRY_GIF = 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbnJpOWZobWxzcmp2cWVmZXg2YWc0MTY3NDVzYWpuc2R3eXpjNWV6MyZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/gdkzWXPgfQIBb8Eywn/giphy.gif';
-const ANGRY_RE = /\b(stupid|dumb|idiot|useless|ugly|trash|garbage|shut up|i hate (you|u|bmo)|hate you|you suck|bmo sucks|bobo|tanga|buang|boang|yawa|gago|pangit|walay\s+pulos|walang\s+kwenta)\b/i;
+// Threats, cursing, fights, and insults make BMO cry and tell on them to Jake (api/chat.ts flags them `mean`).
+const CRY_GIF = 'https://media.tenor.com/iroI0M8PoasAAAAC/adventure-time-cry.gif';
 // Shown in the thinking bubble while BMO waits on the answer.
 const WAITING_GIF = 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExYXdxZ3RqN2F4OXdpYjk2MXBlNWdjczN1cDRycTdxd3l6YzE5ZW5uMCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/JmPabUqU22FAbQYkzN/giphy.gif';
 // When the profile doesn't cover a question, api/chat.ts answers "Jake hasn't shared that one yet…"; BMO shrugs along.
@@ -235,7 +234,6 @@ export default function BmoChat() {
     const who = whoGif(text);
     const gif = BYE_RE.test(text) ? { src: BYE_GIFS[Math.floor(Math.random() * BYE_GIFS.length)], alt: 'BMO waving goodbye' }
       : LOVE_RE.test(text) ? { src: LOVE_GIF, alt: 'BMO loves you too' }
-      : ANGRY_RE.test(text) ? { src: ANGRY_GIF, alt: 'BMO getting angry' }
       : HAPPY_RE.test(text) ? { src: HAPPY_GIF, alt: 'BMO feeling happy' }
       : DANCE_RE.test(text) ? { src: DANCE_GIF, alt: 'BMO dancing' }
       : who?.local ? { src: who.src, alt: who.alt }
@@ -279,6 +277,10 @@ export default function BmoChat() {
       if (data.offTopic) {
         setItems((cur) => cur.map((m) => (m.id === userItem.id ? { ...m, offTopic: true } : m)));
         result = { id: nextId.current++, kind: 'alert' };
+      } else if (data.mean && data.reply) {
+        // Kept out of the model's history, like the other GIF replies.
+        setItems((cur) => cur.map((m) => (m.id === userItem.id ? { ...m, local: true } : m)));
+        result = { id: nextId.current++, kind: 'bot', text: data.reply, local: true, gif: { src: CRY_GIF, alt: 'BMO crying' } };
       } else if (res.ok && data.reply) {
         result = { id: nextId.current++, kind: 'bot', text: data.reply, character: data.character, section: data.section, links: data.links, gif: data.girlfriend ? { src: GIRLFRIEND_GIF, alt: 'BMO gushing about Ate Jessa' }
           : DUNNO_RE.test(data.reply) ? { src: DUNNO_GIF, alt: 'BMO shrugging, not sure' }
