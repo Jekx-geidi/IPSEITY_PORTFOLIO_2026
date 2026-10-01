@@ -86,6 +86,8 @@ const WAITING_GIF = 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExYXdxZ3RqN2
 // When the profile doesn't cover a question, api/chat.ts answers "Jake hasn't shared that one yet…"; BMO shrugs along.
 const DUNNO_GIF = 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbnJpOWZobWxzcmp2cWVmZXg2YWc0MTY3NDVzYWpuc2R3eXpjNWV6MyZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/JmPabUqU22FAbQYkzN/giphy.gif';
 const DUNNO_RE = /hasn't shared that/i;
+// Questions about Jake's girlfriend come back flagged `girlfriend` (api/chat.ts) and get this GIF.
+const GIRLFRIEND_GIF = 'https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3YWVjZ3J2bHQ1d291OTZpNXZqZmszbWFiYmd1eGF2Yjd4ZWg0dzZkbSZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/6rslXNsiJxwme5Xjyg/giphy.gif';
 // "Who is …?" GIFs. Jake and BMO still go to the API and the GIF rides along under the answer;
 // the other characters aren't about Jake (the API would flag them off-topic), so BMO answers with just the GIF.
 const WHO_IS = String.raw`\bwho\s*(is|'s|s|are|r)\s*(u\s+|you\s+)?`;
@@ -269,7 +271,8 @@ export default function BmoChat() {
         setItems((cur) => cur.map((m) => (m.id === userItem.id ? { ...m, offTopic: true } : m)));
         result = { id: nextId.current++, kind: 'alert' };
       } else if (res.ok && data.reply) {
-        result = { id: nextId.current++, kind: 'bot', text: data.reply, character: data.character, section: data.section, links: data.links, gif: DUNNO_RE.test(data.reply) ? { src: DUNNO_GIF, alt: 'BMO shrugging, not sure' }
+        result = { id: nextId.current++, kind: 'bot', text: data.reply, character: data.character, section: data.section, links: data.links, gif: data.girlfriend ? { src: GIRLFRIEND_GIF, alt: 'BMO gushing about Ate Jessa' }
+          : DUNNO_RE.test(data.reply) ? { src: DUNNO_GIF, alt: 'BMO shrugging, not sure' }
           : who ? { src: who.src, alt: who.alt }
           : undefined };
       } else {
