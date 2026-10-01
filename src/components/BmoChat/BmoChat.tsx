@@ -88,6 +88,10 @@ const LOVE_GIF = 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbnJpOWZobWxzc
 const LOVE_RE = /^((i\s*)?(love\s*(you|u)|ily)|love\s+tika|gihigugma\s+tika|mahal\s+kita)(\s*(so much|too|bmo|kaayo|din|rin))*[\s!.~<3]*$/i;
 // Threats, cursing, fights, and insults make BMO cry and tell on them to Jake (api/chat.ts flags them `mean`).
 const CRY_GIF = 'https://media.tenor.com/iroI0M8PoasAAAAC/adventure-time-cry.gif';
+// Saying sorry: BMO sips his tea and forgives them, a bit coolly. Questions ("sorry, what are his skills?") still go through.
+const SORRY_GIF = 'https://media.tenor.com/UcpMvRGjLEQAAAAC/adventure-time-bmo.gif';
+const SORRY_RE = /\b(sorry|sorri|sori|sowi|sowwy|soree|pasensya|pasensiya|pasaylo|patawad|my bad|apologi[sz]e)\b/i;
+const SORRY_REPLIES = ['Okii', 'Okay', 'Gege', 'K', 'Oke'];
 // Shown in the thinking bubble while BMO waits on the answer.
 const WAITING_GIF = 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExYXdxZ3RqN2F4OXdpYjk2MXBlNWdjczN1cDRycTdxd3l6YzE5ZW5uMCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/JmPabUqU22FAbQYkzN/giphy.gif';
 // When the profile doesn't cover a question, api/chat.ts answers "Jake hasn't shared that one yet…"; BMO shrugs along.
@@ -230,6 +234,16 @@ export default function BmoChat() {
     const text = raw.trim();
     if (!text || thinking) return;
     setInput('');
+
+    if (SORRY_RE.test(text) && !text.includes('?')) {
+      const reply = SORRY_REPLIES[Math.floor(Math.random() * SORRY_REPLIES.length)];
+      setItems((cur) => [
+        ...cur,
+        { id: nextId.current++, kind: 'user', text, local: true },
+        { id: nextId.current++, kind: 'bot', text: reply, local: true, gif: { src: SORRY_GIF, alt: 'BMO sipping tea' } },
+      ]);
+      return;
+    }
 
     const who = whoGif(text);
     const gif = BYE_RE.test(text) ? { src: BYE_GIFS[Math.floor(Math.random() * BYE_GIFS.length)], alt: 'BMO waving goodbye' }
