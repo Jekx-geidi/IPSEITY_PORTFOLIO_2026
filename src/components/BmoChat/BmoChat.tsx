@@ -6,8 +6,9 @@ import { AlertTriangle, ArrowUpRight, SendHorizontal, X } from 'lucide-react';
 // anything else comes back as offTopic and shows the red alert bubble instead.
 
 type Item =
-  | { id: number; kind: 'user'; text: string; offTopic?: boolean }
-  | { id: number; kind: 'bot'; text: string; character?: string; section?: string; links?: { label: string; url: string }[] }
+  | { id: number; kind: 'user'; text: string; offTopic?: boolean; local?: boolean }
+  | { id: number; kind: 'bot'; text: string; local?: boolean; character?: string; section?: string; links?: { label: string; url: string }[]; gif?: { src: string; alt: string } }
+  | { id: number; kind: 'gif'; src: string; alt: string }
   | { id: number; kind: 'alert' }
   | { id: number; kind: 'error'; text: string };
 
@@ -19,6 +20,35 @@ const THINKING_LINES = [
   "Crawling Jake's GitHub…",
   'Almost there…',
 ];
+// "Where is Jake now?" is answered from his phone's last check-in (api/where.ts), not the model.
+// "Where is Jake from / based / studying…" still goes to the API.
+const WHERE_RE = /\bwhere\s*(is|'s|s)\s*(jake|riel|reil|he)\b(?!\s*(from|based|study|studying|work|working|living|live)\b)/i;
+const TRACKING_LINES = [
+  "Tracking Jake's location right now…",
+  "Pinging Jake's phone…",
+  'Reading the map of Ooo…',
+];
+const MIN_TRACKING_MS = 2500; // long enough to read the tracking line even when the lookup is instant
+
+const timeAgo = (at: number) => {
+  const mins = Math.round((Date.now() - at) / 60000);
+  if (mins < 2) return 'just now';
+  if (mins < 60) return `${mins} minutes ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return hours === 1 ? 'an hour ago' : `${hours} hours ago`;
+  const days = Math.round(hours / 24);
+  return days === 1 ? 'yesterday' : `${days} days ago`;
+};
+
+const trackJake = async (): Promise<string> => {
+  const [data] = await Promise.all([
+    fetch('/api/where').then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    new Promise((r) => setTimeout(r, MIN_TRACKING_MS)),
+  ]);
+  if (!data) return "BMO's tracker lost the signal. Try again in a moment!";
+  if (!data.place) return "Jake's phone hasn't checked in yet, so BMO can't find him right now.";
+  return `Found him! Jake is in **${data.place}, ${data.country}** right now. (Last check-in: ${timeAgo(data.at)}.)`;
+};
 // Who BMO went to ask (api/chat.ts GUIDES), shown on the "Visit … section" chip.
 const CHARACTER_IMG: Record<string, string> = {
   'BMO': '/bmo.webp',
@@ -32,6 +62,82 @@ const CHARACTER_IMG: Record<string, string> = {
   'Lumpy Space Princess': '/lsp.webp',
   'Ice King': '/ice-king.webp',
 };
+// "Bye" gets a waving GIF straight from BMO, no API call.
+const BYE_GIFS = [
+  'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMTNna2M5YzZtbDQwMXhiMGRqa2hpNXF3amp4NzN2ZWN0ZThkcGRxbCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/z9YISRsmFchUeUMzbM/giphy.gif',
+  'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMTNna2M5YzZtbDQwMXhiMGRqa2hpNXF3amp4NzN2ZWN0ZThkcGRxbCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/fYARMNtQu7N5lfMWOk/giphy.gif',
+  'https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3aWI0dGx3MjF3eW1zYzJuYmhwdnlyejBxeG8ybjE5MWZnMW9uZmMydiZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/H68qSZkEG9qw39YvRD/giphy.gif',
+];
+const BYE_RE = /^(good\s*)?bye+(\s*bye+)*(\s+bmo)?[\s!.~]*$/i;
+// Thanks and compliments make BMO happy: same treatment, one happy GIF.
+const HAPPY_GIF = 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbnJpOWZobWxzcmp2cWVmZXg2YWc0MTY3NDVzYWpuc2R3eXpjNWV6MyZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/lOHus6F5z7Ftzpm4jS/giphy.gif';
+const HAPPY_RE = /^(thanks?( you)?( so much)?|thx|ty|tysm|you'?re (so )?(cute|awesome|amazing|the best|great|cool)|(so )?(cute|awesome|amazing|cool|nice|great|perfect)|good (job|work)|well done|good bmo)(\s+bmo)?[\s!.~<3]*$/i;
+// Asking BMO to dance (or for a party) gets the dancing GIF.
+const DANCE_GIF = 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbnJpOWZobWxzcmp2cWVmZXg2YWc0MTY3NDVzYWpuc2R3eXpjNWV6MyZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/aLI73eIgT41b2/giphy.gif';
+const DANCE_RE = /\b(dance|dancing|party|boogie)\b/i;
+// "I love you" gets its own GIF (checked before the happy one).
+const LOVE_GIF = 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbnJpOWZobWxzcmp2cWVmZXg2YWc0MTY3NDVzYWpuc2R3eXpjNWV6MyZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/h5tnH6Em0i5GZgeTTI/giphy.gif';
+const LOVE_RE = /^(i\s*)?(love\s*(you|u)|ily)(\s*(so much|too|bmo))*[\s!.~<3]*$/i;
+// Insults make BMO angry.
+const ANGRY_GIF = 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbnJpOWZobWxzcmp2cWVmZXg2YWc0MTY3NDVzYWpuc2R3eXpjNWV6MyZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/gdkzWXPgfQIBb8Eywn/giphy.gif';
+const ANGRY_RE = /\b(stupid|dumb|idiot|useless|ugly|trash|garbage|shut up|i hate (you|u|bmo)|hate you|you suck|bmo sucks)\b/i;
+// Shown in the thinking bubble while BMO waits on the answer.
+const WAITING_GIF = 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExYXdxZ3RqN2F4OXdpYjk2MXBlNWdjczN1cDRycTdxd3l6YzE5ZW5uMCZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/JmPabUqU22FAbQYkzN/giphy.gif';
+// When the profile doesn't cover a question, api/chat.ts answers "Jake hasn't shared that one yet…"; BMO shrugs along.
+const DUNNO_GIF = 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbnJpOWZobWxzcmp2cWVmZXg2YWc0MTY3NDVzYWpuc2R3eXpjNWV6MyZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/JmPabUqU22FAbQYkzN/giphy.gif';
+const DUNNO_RE = /hasn't shared that/i;
+// "Who is …?" GIFs. Jake and BMO still go to the API and the GIF rides along under the answer;
+// the other characters aren't about Jake (the API would flag them off-topic), so BMO answers with just the GIF.
+const WHO_IS = String.raw`\bwho\s*(is|'s|s|are|r)\s*(u\s+|you\s+)?`;
+const WHO_GIFS: { re: RegExp; src: string; alt: string; local?: boolean }[] = [
+  {
+    re: new RegExp(WHO_IS + String.raw`(jake|riel|reil|he)\b`, 'i'),
+    src: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExdmlsNGhrMHBkeWhwNGd3ZzNqMmpmeGhsMW85N2JiNXp2NGxneWt4ayZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/cjExA4kq4KVFtkMLUH/giphy.gif',
+    alt: 'BMO introducing Jake',
+  },
+  {
+    re: new RegExp(WHO_IS + String.raw`(bmo|you|u)\b`, 'i'),
+    src: 'https://media.tenor.com/EwQ5ZIES3BAAAAAC/bmo-adventure-time.gif',
+    alt: 'BMO saying hi',
+  },
+  {
+    re: new RegExp(WHO_IS + String.raw`(princess\s*)?(bubble\s*gum|pb)\b`, 'i'),
+    src: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExdmlsNGhrMHBkeWhwNGd3ZzNqMmpmeGhsMW85N2JiNXp2NGxneWt4ayZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/YsN9XdfWtvtcTtZdwT/giphy.gif',
+    alt: 'Princess Bubblegum',
+    local: true,
+  },
+  {
+    re: new RegExp(WHO_IS + String.raw`(lumpy\s*space(\s*princess)?|lsp)\b`, 'i'),
+    src: 'https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3MTQxdGExNTZqOWk1b2hzZ2IwaTY0bjB1azlxNjlvNjFrYzg0ODNyZSZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/L1PwbmWRLGaV38jJ9m/giphy.gif',
+    alt: 'Lumpy Space Princess',
+    local: true,
+  },
+  {
+    re: new RegExp(WHO_IS + String.raw`((flame|fire)\s*princess|fp)\b`, 'i'),
+    src: 'https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3dmh6c2g0ejF0cXpnb3I1bW9uc3FpeWp3bnRzcDQ2bG1yaXU5ODh4aiZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/9GT0BJD6cqhdC/giphy.gif',
+    alt: 'Flame Princess',
+    local: true,
+  },
+  {
+    re: new RegExp(WHO_IS + String.raw`marceline\b`, 'i'),
+    src: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExdmlsNGhrMHBkeWhwNGd3ZzNqMmpmeGhsMW85N2JiNXp2NGxneWt4ayZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/5XFYQM7gRAPy8/giphy.gif',
+    alt: 'Marceline',
+    local: true,
+  },
+  {
+    re: new RegExp(WHO_IS + String.raw`((lady\s*)?rainicorn|rainbow(\s*unicorn)?)\b`, 'i'),
+    src: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExdmlsNGhrMHBkeWhwNGd3ZzNqMmpmeGhsMW85N2JiNXp2NGxneWt4ayZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/2aON3EshAcUKY/giphy.gif',
+    alt: 'Lady Rainicorn',
+    local: true,
+  },
+  {
+    re: new RegExp(WHO_IS + String.raw`(the\s+)?(penguin|gunter|gunther)\b`, 'i'),
+    src: 'https://media.tenor.com/HHIQUiQEzm0AAAAC/gunter.gif',
+    alt: 'Gunter the penguin',
+    local: true,
+  },
+];
+const whoGif = (text: string) => WHO_GIFS.find((g) => g.re.test(text));
 const SUGGESTIONS = ['Who is Jake?', 'What are his skills?', 'Show me his projects', 'How can I contact him?'];
 const GREETING = "Hi, I'm BMO, Jake's Assistant! I'll be the one chatting with you since Jake is busy working. Ask me anything about him: his work, skills, projects, or how to reach him.";
 
@@ -51,12 +157,12 @@ const BmoAvatar = ({ size = 'w-9 h-9' }: { size?: string }) => (
   />
 );
 
-const Thinking = () => {
+const Thinking = ({ lines }: { lines: string[] }) => {
   const [line, setLine] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setLine((l) => (l + 1) % THINKING_LINES.length), 1400);
+    const t = setInterval(() => setLine((l) => (l + 1) % lines.length), 1400);
     return () => clearInterval(t);
-  }, []);
+  }, [lines]);
   return (
     <div className="flex items-end gap-2" role="status" aria-live="polite">
       <BmoAvatar />
@@ -71,6 +177,7 @@ const Thinking = () => {
             />
           ))}
         </div>
+        <img src={WAITING_GIF} alt="" aria-hidden="true" className="mb-1 h-16 object-contain" draggable={false} />
         <AnimatePresence mode="wait">
           <motion.p
             key={line}
@@ -80,7 +187,7 @@ const Thinking = () => {
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.2 }}
           >
-            {THINKING_LINES[line]}
+            {lines[line]}
           </motion.p>
         </AnimatePresence>
       </div>
@@ -92,7 +199,7 @@ export default function BmoChat() {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Item[]>([{ id: 0, kind: 'bot', text: GREETING }]);
   const [input, setInput] = useState('');
-  const [thinking, setThinking] = useState(false);
+  const [thinking, setThinking] = useState<false | 'chat' | 'track'>(false);
   const nextId = useRef(1);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -112,18 +219,41 @@ export default function BmoChat() {
   const send = async (raw: string) => {
     const text = raw.trim();
     if (!text || thinking) return;
+    setInput('');
+
+    const who = whoGif(text);
+    const gif = BYE_RE.test(text) ? { src: BYE_GIFS[Math.floor(Math.random() * BYE_GIFS.length)], alt: 'BMO waving goodbye' }
+      : LOVE_RE.test(text) ? { src: LOVE_GIF, alt: 'BMO loves you too' }
+      : ANGRY_RE.test(text) ? { src: ANGRY_GIF, alt: 'BMO getting angry' }
+      : HAPPY_RE.test(text) ? { src: HAPPY_GIF, alt: 'BMO feeling happy' }
+      : DANCE_RE.test(text) ? { src: DANCE_GIF, alt: 'BMO dancing' }
+      : who?.local ? { src: who.src, alt: who.alt }
+      : null;
+    if (gif) {
+      setItems((cur) => [...cur, { id: nextId.current++, kind: 'user', text, local: true }, { id: nextId.current++, kind: 'gif', ...gif }]);
+      return;
+    }
+
+    if (WHERE_RE.test(text)) {
+      setItems((cur) => [...cur, { id: nextId.current++, kind: 'user', text, local: true }]);
+      setThinking('track');
+      const reply = await trackJake();
+      setItems((cur) => [...cur, { id: nextId.current++, kind: 'bot', text: reply, local: true }]);
+      setThinking(false);
+      return;
+    }
+
     const userItem: Item = { id: nextId.current++, kind: 'user', text };
     const next = [...items, userItem];
     setItems(next);
-    setInput('');
-    setThinking(true);
+    setThinking('chat');
 
-    // History for the model: real Q&A only (skip the greeting, alerts, errors and off-topic questions).
+    // History for the model: real Q&A only (skip the greeting, alerts, errors, GIFs, the messages that got them, and off-topic questions).
     const messages = next
       .slice(1)
       .flatMap((m) =>
-        m.kind === 'user' && !m.offTopic ? [{ role: 'user', content: m.text }]
-        : m.kind === 'bot' ? [{ role: 'assistant', content: m.text }]
+        m.kind === 'user' && !m.offTopic && !m.local ? [{ role: 'user', content: m.text }]
+        : m.kind === 'bot' && !m.local ? [{ role: 'assistant', content: m.text }]
         : []
       );
 
@@ -139,7 +269,9 @@ export default function BmoChat() {
         setItems((cur) => cur.map((m) => (m.id === userItem.id ? { ...m, offTopic: true } : m)));
         result = { id: nextId.current++, kind: 'alert' };
       } else if (res.ok && data.reply) {
-        result = { id: nextId.current++, kind: 'bot', text: data.reply, character: data.character, section: data.section, links: data.links };
+        result = { id: nextId.current++, kind: 'bot', text: data.reply, character: data.character, section: data.section, links: data.links, gif: DUNNO_RE.test(data.reply) ? { src: DUNNO_GIF, alt: 'BMO shrugging, not sure' }
+          : who ? { src: who.src, alt: who.alt }
+          : undefined };
       } else {
         result = { id: nextId.current++, kind: 'error', text: data.error || 'BMO lost the signal. Try again!' };
       }
@@ -206,6 +338,16 @@ export default function BmoChat() {
                       {m.text}
                     </p>
                   </motion.div>
+                ) : m.kind === 'gif' ? (
+                  <motion.div key={m.id} className="flex items-end gap-2" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+                    <BmoAvatar />
+                    <img
+                      src={m.src}
+                      alt={m.alt}
+                      className="max-w-[60%] max-h-40 rounded-2xl rounded-bl-sm border-2 border-bmo-ink bg-white/70 object-contain"
+                      draggable={false}
+                    />
+                  </motion.div>
                 ) : m.kind === 'alert' ? (
                   <motion.div
                     key={m.id}
@@ -234,6 +376,14 @@ export default function BmoChat() {
                       >
                         {renderText(m.text)}
                       </p>
+                      {m.kind === 'bot' && m.gif && (
+                        <img
+                          src={m.gif.src}
+                          alt={m.gif.alt}
+                          className="mt-1.5 max-h-32 rounded-2xl border-2 border-bmo-ink bg-white/70 object-contain"
+                          draggable={false}
+                        />
+                      )}
                       {m.kind === 'bot' && m.links?.map((l) => (
                         <a
                           key={l.url}
@@ -261,7 +411,7 @@ export default function BmoChat() {
                   </motion.div>
                 )
               )}
-              {thinking && <Thinking />}
+              {thinking && <Thinking key={thinking} lines={thinking === 'track' ? TRACKING_LINES : THINKING_LINES} />}
               {onlyGreeting && !thinking && (
                 <div className="flex flex-wrap gap-2 pt-1">
                   {SUGGESTIONS.map((s) => (
@@ -294,7 +444,7 @@ export default function BmoChat() {
               />
               <button
                 type="submit"
-                disabled={thinking || !input.trim()}
+                disabled={!!thinking || !input.trim()}
                 aria-label="Send"
                 className="w-12 h-12 shrink-0 rounded-full border-[3px] border-bmo-ink bg-bmo-pink text-white flex items-center justify-center shadow-[inset_0_-4px_0_rgba(23,4,20,0.25)] hover:brightness-105 active:translate-y-0.5 disabled:opacity-50 transition"
               >
