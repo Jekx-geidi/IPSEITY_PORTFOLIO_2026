@@ -99,7 +99,7 @@ const GIRLFRIEND_GIF = 'https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3YWVjZ3J
 // "Who is …?" GIFs. Jake and BMO still go to the API and the GIF rides along under the answer;
 // the other characters aren't about Jake (the API would flag them off-topic), so BMO answers with just the GIF.
 // English "who is …", Cebuano "kinsa (si|ka) …", Tagalog "sino (si|ka) …".
-const WHO_IS = String.raw`(\bwho\s*(is|'s|s|are|r)\s*(u\s+|you\s+)?|\b(kinsa|sino)\s+(ba\s+)?(si\s+|ang\s+|ka\b\s*)?)`;
+const WHO_IS = String.raw`(\bwho\s*(is|'s|s|are|r)\s*(u\s+|you\s+)?|\b(kinsay|kinsa|sino)\s+(ba\s+)?(si\s+|ang\s+|ka\b\s*)?)`;
 const WHO_GIFS: { re: RegExp; src: string; alt: string; local?: boolean }[] = [
   {
     re: new RegExp(WHO_IS + String.raw`(jake|riel|reil|he)\b`, 'i'),

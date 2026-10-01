@@ -22,7 +22,7 @@ const GITHUB_PROFILE = 'https://github.com/Jekx-geidi';
 // BMO speaks English, Cebuano, and Tagalog. The router reports which one the visitor used;
 // replies that skip the model (contact, fallbacks) guess it from tell-tale words instead.
 type Lang = 'en' | 'ceb' | 'tl';
-const CEB_WORDS = /\b(unsa|unsaon|asa|kinsa|kanus-a|pila|nimo|imong|iyang|iya|ug|nga|diay|karon|gyud|jud|ganahan|nagpuyo|taga|mao|naa|ani|ana|kaayo|kini|bitaw|lagi|sad|pud|dili|makontak|kontakon|uyab|igsoon|inahan|amahan|ig-agaw|natawo|bisaya)\b/gi;
+const CEB_WORDS = /\b(unsa|unsay|unsaon|asa|asay|kinsa|kinsay|kanus-a|pila|nimo|imong|iyang|iya|ug|nga|diay|karon|gyud|jud|ganahan|nagpuyo|taga|mao|naa|ani|ana|kaayo|kini|bitaw|lagi|sad|pud|dili|makontak|kontakon|uyab|igsoon|inahan|amahan|ig-agaw|natawo|bisaya)\b/gi;
 const TL_WORDS = /\b(ano|saan|sino|kailan|ilan|ilang|taon|mo|po|ay|naman|talaga|gusto|nakatira|galing|ito|iyan|ngayon|hindi|meron|paano|bakit|kanyang|niyang|kapatid|magulang|pinsan|ipinanganak|kasintahan|tagalog)\b/gi;
 const detectLang = (text: string): Lang => {
   const ceb = text.match(CEB_WORDS)?.length ?? 0;
@@ -159,7 +159,7 @@ const CONTACT_PATTERN = /\b(contact|reach (him|jake)|e-?mail|phone|linkedin|get 
 
 // Girlfriend questions get their own model call at a high temperature so BMO never says it the
 // same way twice. If the model is down, BMO picks one of the fixed lines instead.
-const GIRLFRIEND_PATTERN = /\b(girl\s*friend|gf|jowa|wife|lover|sweetheart|love\s*life|dating|in a relationship|relationship status|crush|jessa|montebon|is\s+(he|jake)\s+(still\s+)?(single|taken)|(he|jake)('s|\s+is)\s+(still\s+)?(single|taken)|(his|jake's)\s+(life\s+)?partner|uyab|kasintahan|nobya|kabit|kerida|querida|mistress|side\s*chick|ka-?relasyon|(single|taken)\s+(pa\s+)?(ba\s+)?(si\s+jake|siya))\b/i;
+const GIRLFRIEND_PATTERN = /\b(girl\s*friend|gf|jowa|wife|lover|sweetheart|love\s*life|dating|in a relationship|relationship status|crush|jessa|montebon|is\s+(he|jake)\s+(still\s+)?(single|taken)|(he|jake)('s|\s+is)\s+(still\s+)?(single|taken)|(his|jake's)\s+(life\s+)?partner|uyab|uyaban|kasintahan|nobya|syota|shota|kab[ei]t+s?|k[ei]rida|querida|mistress(es)?|side\s*chicks?|ka-?relasyon|(single|taken)\s+(pa\s+)?(ba\s+)?(si\s+jake|siya))\b/i;
 const GIRLFRIEND_FACTS = `Jake's girlfriend is Ate Jessa Montebon. She's kinda pretty and has a kind heart. She has supported Jake all through his life and is always there for him.`;
 const GIRLFRIEND_LINES = [
   "It's Ate Jessa Montebon! She's kinda pretty, and has a kind heart, who supported Jake all over his life. She's always there for Jake.",
@@ -170,7 +170,7 @@ const GIRLFRIEND_LINES = [
 ];
 const pick = (lines: string[]) => lines[Math.floor(Math.random() * lines.length)];
 // "Kabit" (mistress / side chick) questions: BMO shuts them down, Jake is loyal to Ate Jessa.
-const KABIT_RE = /\b(kabit|kerida|querida|mistress|side\s*chick|other\s+(woman|girl)|babae\s+niya|ibang\s+babae|laing\s+babaye)\b/i;
+const KABIT_RE = /\b(kab[ei]t+s?|k[ei]rida|querida|mistress(es)?|side\s*chicks?|other\s+(woman|girl)|babae\s+niya|ibang\s+babae|laing\s+babaye)\b/i;
 const KABIT_LINES: Record<Lang, string[]> = {
   en: [
     "Jake doesn't have a side chick! He's loyal to Ate Jessa Montebon only.",
@@ -299,7 +299,7 @@ BMO speaks English, Cebuano (Bisaya), and Tagalog. Set "lang" to the language of
 TOPICS (pick exactly one, the single best match)
 ${topicList}
 - "contact": ${GUIDES.contact.covers} (answer can be empty, it is filled in automatically)
-- "${GIRLFRIEND_TOPIC}": anything about Jake's girlfriend, partner, love life, or whether he is single (answer can be empty, it is filled in automatically)
+- "${GIRLFRIEND_TOPIC}": anything about Jake's girlfriend, partner, love life, or whether he is single, including questions about a "kabit" / "kabet" / "kerida" / mistress / side chick (Cebuano and Tagalog slang, even misspelled) (answer can be empty, it is filled in automatically)
 - "${FAMILY_TOPIC}": anything about Jake's family: his parents, step-parents, siblings, step-siblings, cousins, relatives, or family name (answer can be empty, it is filled in automatically)
 - "${LIFE_TOPIC}": Jake's personal life: his birthday or age, where he lives or his home address, his favourite colour or food, his hobbies, interests, or what he does for fun (answer can be empty, it is filled in automatically)
 - "${GREETING_TOPIC}": hello / thanks / goodbye, or questions about BMO himself or what BMO can do
