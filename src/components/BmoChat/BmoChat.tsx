@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertTriangle, ArrowUpRight, SendHorizontal, X } from 'lucide-react';
+import { quickReply } from '../../../api/_bmo';
 
 // Floating "Ask BMO" chat. BMO answers questions about Jake only (see api/chat.ts);
 // anything else comes back as offTopic and shows the red alert bubble instead.
@@ -152,6 +153,9 @@ const WHO_GIFS: { re: RegExp; src: string; alt: string; local?: boolean }[] = [
   },
 ];
 const whoGif = (text: string) => WHO_GIFS.find((g) => g.re.test(text));
+// Answers from the model, keyed by the exact conversation sent, so asking the same thing again
+// (or tapping the same suggestion) answers at once. Cleared on reload.
+const answerCache = new Map<string, Item>();
 const SUGGESTIONS = ['Who is Jake?', 'What are his skills?', 'Show me his projects', 'How can I contact him?'];
 const GREETING = "Hi, I'm BMO, Jake's Assistant! I'll be the one chatting with you since Jake is busy working. Ask me anything about him: his work, skills, projects, or how to reach him. You can ask in English, Cebuano, or Tagalog!";
 
@@ -266,10 +270,22 @@ export default function BmoChat() {
       return;
     }
 
+    // Keyword hits (girlfriend, family, birthday, contact, being mean…) don't need thinking: answer right away.
+    const quick = quickReply(text);
+    if (quick) {
+      const gif = quick.kind === 'mean' ? { src: CRY_GIF, alt: 'BMO crying' }
+        : quick.kind === 'girlfriend' ? { src: GIRLFRIEND_GIF, alt: 'BMO gushing about Ate Jessa' }
+        : undefined;
+      setItems((cur) => [
+        ...cur,
+        { id: nextId.current++, kind: 'user', text, local: true },
+        { id: nextId.current++, kind: 'bot', text: quick.reply, local: true, character: quick.character, section: quick.section, gif },
+      ]);
+      return;
+    }
+
     const userItem: Item = { id: nextId.current++, kind: 'user', text };
     const next = [...items, userItem];
-    setItems(next);
-    setThinking('chat');
 
     // History for the model: real Q&A only (skip the greeting, alerts, errors, GIFs, the messages that got them, and off-topic questions).
     const messages = next
@@ -279,6 +295,15 @@ export default function BmoChat() {
         : m.kind === 'bot' && !m.local ? [{ role: 'assistant', content: m.text }]
         : []
       );
+
+    const cacheKey = JSON.stringify(messages);
+    const hit = answerCache.get(cacheKey);
+    if (hit) {
+      setItems([...next, { ...hit, id: nextId.current++ }]);
+      return;
+    }
+    setItems(next);
+    setThinking('chat');
 
     let result: Item;
     try {
@@ -300,6 +325,8 @@ export default function BmoChat() {
           : DUNNO_RE.test(data.reply) ? { src: DUNNO_GIF, alt: 'BMO shrugging, not sure' }
           : who ? { src: who.src, alt: who.alt }
           : undefined };
+        // Personal replies are worded fresh each time, so only cache the router's fixed answers.
+        if (!data.girlfriend && !data.family && !data.life) answerCache.set(cacheKey, result);
       } else {
         result = { id: nextId.current++, kind: 'error', text: data.error || 'BMO lost the signal. Try again!' };
       }

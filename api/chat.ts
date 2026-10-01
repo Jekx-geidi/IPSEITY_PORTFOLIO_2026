@@ -9,6 +9,11 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { catalogText, getReadme, getRepos, matchRepo, type Repo } from './_github.js';
+import {
+  CONTACT_REPLY, FAMILY_FACTS, FAMILY_NAMES, GIRLFRIEND_FACTS, KABIT_RE,
+  detectLang, familyLine, girlfriendLine, lifeFacts, lifeLine, meanLine, quickReply,
+  type Lang, type Mean, type QuickReply,
+} from './_bmo.js';
 
 // Primary model, then OpenRouter falls back down the list if it's down or rate limited.
 const MODELS = ['nvidia/nemotron-3-ultra-550b-a55b:free', 'stealth/space-bunny-alpha'];
@@ -20,15 +25,7 @@ const RATE_WINDOW_MS = 10 * 60 * 1000;
 
 const GITHUB_PROFILE = 'https://github.com/Jekx-geidi';
 // BMO speaks English, Cebuano, and Tagalog. The router reports which one the visitor used;
-// replies that skip the model (contact, fallbacks) guess it from tell-tale words instead.
-type Lang = 'en' | 'ceb' | 'tl';
-const CEB_WORDS = /\b(unsa|unsay|unsaon|asa|asay|kinsa|kinsay|kanus-a|pila|nimo|imong|iyang|iya|ug|nga|diay|karon|gyud|jud|ganahan|nagpuyo|taga|mao|naa|ani|ana|kaayo|kini|bitaw|lagi|sad|pud|dili|makontak|kontakon|uyab|igsoon|inahan|amahan|ig-agaw|natawo|bisaya)\b/gi;
-const TL_WORDS = /\b(ano|saan|sino|kailan|ilan|ilang|taon|mo|po|ay|naman|talaga|gusto|nakatira|galing|ito|iyan|ngayon|hindi|meron|paano|bakit|kanyang|niyang|kapatid|magulang|pinsan|ipinanganak|kasintahan|tagalog)\b/gi;
-const detectLang = (text: string): Lang => {
-  const ceb = text.match(CEB_WORDS)?.length ?? 0;
-  const tl = text.match(TL_WORDS)?.length ?? 0;
-  return ceb === 0 && tl === 0 ? 'en' : ceb >= tl ? 'ceb' : 'tl';
-};
+// replies that skip the model guess it with detectLang (api/_bmo.ts).
 const LANGUAGE_RULE = 'Reply in the same language the visitor wrote in: English, Cebuano (Bisaya), or Tagalog. If they mix in English (Bislish / Taglish), mirror that mix. Never mix Cebuano and Tagalog in one reply: Cebuano says "karon", "iya", "kaayo", "siya kay"; Tagalog says "ngayon", "kanya", "talaga", "siya ay". For any other language, reply in English.';
 
 // When a question names one project, Bubblegum reads that repo's README instead.
@@ -36,13 +33,6 @@ const REPO_OPENING: Record<Lang, string> = {
   en: "I visited Princess Bubblegum's lab, and she read Jake's GitHub repo for this. She said that ",
   ceb: 'Niadto ko sa lab ni Princess Bubblegum, ug gibasa niya ang GitHub repo ni Jake para ani. Ingon siya nga ',
   tl: 'Bumisita ako sa lab ni Princess Bubblegum, at binasa niya ang GitHub repo ni Jake para dito. Sabi niya, ',
-};
-
-// Keep in sync with the contact section in ABOUTME.md.
-const CONTACT = {
-  email: 'riel.engana@student.passerellesnumeriques.org',
-  phone: '0985 025 4857',
-  linkedin: 'https://www.linkedin.com/in/riel-jake-engana-585644372/',
 };
 
 type Topic =
@@ -140,162 +130,12 @@ const GUIDES: Record<Topic, { character: string; section: string; opening: Recor
   },
 };
 
-const CONTACT_DETAILS = `email: ${CONTACT.email}, phone: ${CONTACT.phone}, LinkedIn: ${CONTACT.linkedin}`;
-const CONTACT_REPLY: Record<Lang, string> = {
-  en: `Ice King is the one holding his information, so I was calling him, and he said that you can contact Jake through ${CONTACT_DETAILS}. You can also send him a message straight from the Ice King's Contact section!`,
-  ceb: `Si Ice King ang naghupot sa iyang impormasyon, mao nga gitawagan nako siya, ug ingon siya nga makontak nimo si Jake pinaagi sa ${CONTACT_DETAILS}. Pwede pud nimo siya padalhan og mensahe diretso sa Contact section ni Ice King!`,
-  tl: `Si Ice King ang may hawak ng impormasyon niya, kaya tinawagan ko siya, at sabi niya na maaari mong kontakin si Jake sa ${CONTACT_DETAILS}. Puwede mo rin siyang padalhan ng mensahe diretso sa Contact section ni Ice King!`,
-};
-
 const OFF_TOPIC_TOPIC = 'off_topic';
 const GREETING_TOPIC = 'greeting';
 const GIRLFRIEND_TOPIC = 'girlfriend';
 const FAMILY_TOPIC = 'family';
 const LIFE_TOPIC = 'life';
 const MEAN_TOPIC = 'mean';
-
-// Contact questions skip the model entirely: the words are unambiguous and the reply is fixed.
-// ("hire", "call", "number" are left to the model: "how much to hire him" is pricing, not contact.)
-const CONTACT_PATTERN = /\b(contact|reach (him|jake)|e-?mail|phone|linkedin|get in touch|\w*kontak\w*)\b/i;
-
-// Girlfriend questions get their own model call at a high temperature so BMO never says it the
-// same way twice. If the model is down, BMO picks one of the fixed lines instead.
-const GIRLFRIEND_PATTERN = /\b(girl\s*friend|gf|jowa|wife|lover|sweetheart|love\s*life|dating|in a relationship|relationship status|crush|jessa|montebon|is\s+(he|jake)\s+(still\s+)?(single|taken)|(he|jake)('s|\s+is)\s+(still\s+)?(single|taken)|(his|jake's)\s+(life\s+)?partner|uyab|uyaban|kasintahan|nobya|syota|shota|kab[ei]t+s?|k[ei]rida|querida|mistress(es)?|side\s*chicks?|ka-?relasyon|(single|taken)\s+(pa\s+)?(ba\s+)?(si\s+jake|siya))\b/i;
-const GIRLFRIEND_FACTS = `Jake's girlfriend is Ate Jessa Montebon. She's kinda pretty and has a kind heart. She has supported Jake all through his life and is always there for him.`;
-const GIRLFRIEND_LINES = [
-  "It's Ate Jessa Montebon! She's kinda pretty, and has a kind heart, who supported Jake all over his life. She's always there for Jake.",
-  "That would be Ate Jessa Montebon! Kinda pretty, super kind-hearted, and she's been supporting Jake his whole life.",
-  "Jake's heart belongs to Ate Jessa Montebon. She's kinda pretty, has the kindest heart, and she's always there for him.",
-  "Ooh, BMO knows this one! It's Ate Jessa Montebon. She's kinda pretty, kind-hearted, and has supported Jake through everything.",
-  "Ate Jessa Montebon! She's always been there for Jake, supporting him all his life. Kinda pretty, and a really kind heart too.",
-];
-const pick = <T,>(lines: T[]) => lines[Math.floor(Math.random() * lines.length)];
-// "Kabit" (mistress / side chick) questions: BMO shuts them down, Jake is loyal to Ate Jessa.
-const KABIT_RE = /\b(kab[ei]t+s?|k[ei]rida|querida|mistress(es)?|side\s*chicks?|other\s+(woman|girl)|babae\s+niya|ibang\s+babae|laing\s+babaye)\b/i;
-const KABIT_LINES: Record<Lang, string[]> = {
-  en: [
-    "Jake doesn't have a side chick! He's loyal to Ate Jessa Montebon only.",
-    'No such thing! Jake only has eyes for Ate Jessa Montebon, his girlfriend.',
-  ],
-  ceb: [
-    'Walay kabit si Jake uy! Loyal siya kay Ate Jessa Montebon ra, iyang uyab.',
-    'Wala gyud! Si Ate Jessa Montebon ra ang uyab ni Jake, ug loyal kaayo siya niya.',
-  ],
-  tl: [
-    'Walang kabit si Jake! Loyal siya kay Ate Jessa Montebon lang, ang girlfriend niya.',
-    'Wala talaga! Si Ate Jessa Montebon lang ang kasintahan ni Jake, at loyal siya sa kanya.',
-  ],
-};
-// Visitors who are mean to BMO make him cry (BmoChat.tsx shows the crying GIF) and he tells on them to Jake.
-// The patterns catch the obvious ones without a model call; the router's "mean" topic catches the rest.
-type Mean = 'threat' | 'curse' | 'fight' | 'bully';
-const MEAN_PATTERNS: { kind: Mean; re: RegExp }[] = [
-  { kind: 'threat', re: /\b(hack(on|in|ko)?\s+(ko\s+)?(tika|kita|ka|you|u|bmo|si\s+bmo)|(i'?ll|i\s+will|gonna)\s+(hack|kill|destroy|delete|break|hurt)\s+(you|u|bmo)|kill\s+(you|u)|patyon?\s+(tika|ka)|papatayin\s+(kita|ka)|bunalan?\s+(tika|ka)|sumbagon\s+(tika|ka)|sapakon\s+(tika|ka)|gubaon?\s+(tika|ka)|sirain\s+(kita|ka)|ddos)\b/i },
-  { kind: 'curse', re: /\b(yawa+|piste|pisti|giatay|atay|gago|gaga|ulol|putang\s*ina|puta|tang\s*ina|tangina|inamo|pakyu|pak\s*yu|fuck\w*|fck|shit|bitch|asshole|bwisit|leche|lintik|pakshet|bilat|iyot|oten|otin)\b/i },
-  { kind: 'fight', re: /\b(shut\s+up|i\s+hate\s+(you|u|bmo)|hate\s+(you|u)|get\s+lost|go\s+away|away\s+ta|mag-?away\s+ta|suntukan|hilom\s+(diha|ka)|tumahimik\s+ka|manahimik\s+ka|layas)\b/i },
-  { kind: 'bully', re: /\b(stupid|dumb|idiot|useless|ugly|trash|garbage|loser|you\s+suck|bmo\s+sucks|bobo|boba|tanga|buang|boang|engot|tonto|pangit|walay\s+pulos|walang\s+kwenta|baho\s+ka|bulok)\b/i },
-];
-const MEAN_WHAT: Record<Mean, Record<Lang, string>> = {
-  threat: { en: 'You threatened me', ceb: 'Nang-threaten ka nako', tl: 'Tinakot mo ako' },
-  curse: { en: 'You cursed at me', ceb: 'Namalikas ka nako', tl: 'Minura mo ako' },
-  fight: { en: "You're picking a fight with me", ceb: 'Nangaway ka nako', tl: 'Inaway mo ako' },
-  bully: { en: "You're bullying me", ceb: 'Nang-bully ka nako', tl: 'Binu-bully mo ako' },
-};
-const MEAN_LINES: Record<Lang, ((what: string) => string)[]> = {
-  en: [(w) => `I'm telling Jake! ${w}...`, (w) => `Waaah! ${w}! I'm telling Jake on you!`, (w) => `${w}... BMO is going to tell Jake!`],
-  ceb: [(w) => `E tug-an ra tika kang Jake! ${w}...`, (w) => `Huhuhu! ${w}! E sumbong ra tika kang Jake!`, (w) => `${w}... e-tug-an ra gyud tika kang Jake!`],
-  tl: [(w) => `Isusumbong kita kay Jake! ${w}...`, (w) => `Huhuhu! ${w}! Isusumbong kita kay Jake!`, (w) => `${w}... sasabihin ko 'to kay Jake!`],
-};
-const meanKind = (text: string): Mean | null => MEAN_PATTERNS.find((p) => p.re.test(text))?.kind ?? null;
-const meanResult = (kind: Mean, lang: Lang): ChatResult => ({
-  status: 200,
-  body: { reply: pick(MEAN_LINES[lang])(MEAN_WHAT[kind][lang]), character: 'BMO', mean: true },
-});
-
-const randomLine = (question: string) =>
-  KABIT_RE.test(question) ? pick(KABIT_LINES[detectLang(question)]) : pick(GIRLFRIEND_LINES);
-
-// Family questions work the same way. Each fallback answers just the part that was asked.
-const FAMILY_PATTERN = /\b(family|families|surname|last name|family name|relatives?|parents?|mom|moms|mommy|mother|mama|nanay|dad|daddy|father|papa|tatay|step\s*-?\s*(dad|father|parents?|siblings?|brothers?|sisters?|mom|mother)|siblings?|brothers?|sisters?|ate|kuya|cousins?|myrna|stephanie|roelito|johnlyn|enopia|rosemarie|ranilyn|rommel|kyzer|kjeona|keziah|ryle|syke|tolero|rohan|rania|vaughn|pamilya|apelyido|ginikanan|magulang|inahan|inay|amahan|itay|igsoon|kapatid|manghod|ig-?agaw|pinsan|amain|ama-ama|madrasta)\b/i;
-const FAMILY_NAMES = /engaña|engana|enopia|tolero|myrna|stephanie|roelito|johnlyn/i;
-const FAMILY_FACTS = `- Moms: Myrna Engaña and Stephanie
-- Dad: Roelito Engaña
-- Stepdad: Johnlyn Enopia
-- Older siblings (all Engaña): Ate Rosemarie Engaña and Ate Ranilyn Engaña (older sisters), Kuya Rommel Engaña (older brother)
-- Siblings: Ryle Nave Tolero and Syke Feb Tolero
-- Step-siblings: Kyzer Enopia, Kjeona Enopia, Keziah Enopia
-- Cousins (all Engaña): Rohan, Rania, Lucas, Vaughn, Gabrielle, Heart`;
-const FAMILY_PARTS: { re: RegExp; lines: string[] }[] = [
-  { re: /step\s*-?\s*(dad|father|parent)|johnlyn/i, lines: [
-    "Jake's stepdad is Johnlyn Enopia!",
-    'That would be Johnlyn Enopia, Jake\'s stepdad.',
-  ] },
-  { re: /step\s*-?\s*(siblings?|brothers?|sisters?)|kyzer|kjeona|keziah/i, lines: [
-    "Jake's step-siblings are Kyzer, Kjeona, and Keziah Enopia!",
-    'Jake has three step-siblings: Kyzer Enopia, Kjeona Enopia, and Keziah Enopia.',
-  ] },
-  { re: /\b(mom|moms|mommy|mother|mama|nanay|myrna|stephanie)\b/i, lines: [
-    "Jake's moms are Myrna Engaña and Stephanie!",
-    'That would be Myrna Engaña and Stephanie, Jake\'s moms.',
-  ] },
-  { re: /\b(dad|daddy|father|papa|tatay|roelito)\b/i, lines: [
-    "Jake's dad is Roelito Engaña!",
-    'That would be Roelito Engaña, Jake\'s dad.',
-  ] },
-  { re: /\bparents?\b/i, lines: [
-    "Jake's moms are Myrna Engaña and Stephanie, his dad is Roelito Engaña, and his stepdad is Johnlyn Enopia.",
-  ] },
-  { re: /\bcousins?\b|rohan|rania|vaughn/i, lines: [
-    "Jake's cousins are Rohan, Rania, Lucas, Vaughn, Gabrielle, and Heart, all Engaña!",
-    'BMO counted six Engaña cousins: Rohan, Rania, Lucas, Vaughn, Gabrielle, and Heart.',
-  ] },
-  { re: /\b(siblings?|brothers?|sisters?|ate|kuya)\b|rosemarie|ranilyn|rommel|ryle|syke|tolero/i, lines: [
-    "Jake's older siblings are Ate Rosemarie, Ate Ranilyn, and Kuya Rommel Engaña, and his siblings Ryle Nave Tolero and Syke Feb Tolero. He also has step-siblings Kyzer, Kjeona, and Keziah Enopia.",
-    'Jake has Ate Rosemarie, Ate Ranilyn, and Kuya Rommel (all Engaña), plus Ryle Nave Tolero and Syke Feb Tolero, and step-siblings Kyzer, Kjeona, and Keziah Enopia. Big family!',
-  ] },
-];
-const FAMILY_ALL = [
-  "Jake's family name is Engaña! His moms are Myrna Engaña and Stephanie, his dad is Roelito Engaña, and his stepdad is Johnlyn Enopia. He has Ate Rosemarie, Ate Ranilyn, and Kuya Rommel Engaña, siblings Ryle Nave Tolero and Syke Feb Tolero, step-siblings Kyzer, Kjeona, and Keziah Enopia, and cousins Rohan, Rania, Lucas, Vaughn, Gabrielle, and Heart Engaña.",
-];
-const familyLine = (question: string) => pick(FAMILY_PARTS.find((p) => p.re.test(question))?.lines ?? FAMILY_ALL);
-
-// Personal life: where he lives, favourites, hobbies. Same treatment as family.
-// ("Where is Jake now?" is the live phone tracker in BmoChat.tsx and never reaches here.)
-const HOME_ADDRESS = '6.5 Zone Ahos, Brgy. Paknaan, Block 3, Lot 17, Mandaue City, Cebu';
-const LIFE_PATTERN = /\b(birthday|bday|b-day|birth\s*date|date\s+of\s+birth|when\s+(was|is)\s+(he|jake)\s+born|how\s+old|(his|jake's)\s+age|age\s+of\s+(him|jake)|where\s+(is|does|do)\s+(he|jake)\s+(from|live|living|stay|staying|reside)|where('s|\s+is)\s+(his|jake's)\s+(home|house|place)|(his|jake's)\s+(home|house|address|hometown)|address|hometown|fav(ou?rite)?\s+(colou?rs?|foods?|dish(es)?|meals?|hobb(y|ies)|things?)|colou?rs?\s+(does|do)\s+(he|jake)\s+(like|love)|food\s+(does|do)\s+(he|jake)\s+(like|love)|hobb(y|ies)|free\s+time|for\s+fun|interests|passions?|what\s+(does|do)\s+(he|jake)\s+(like|love|enjoy)|kaarawan|adlaw'?ng\s+natawhan|natawo|ipinanganak|edad|ilang\s+taon|pila\s+(na\s+)?(ka\s+)?tuig|asa\s+(siya|si\s+jake)\s+(nagpuyo|nakapuyo|puyo|gikan|nagestar|nag-?istar)|saan\s+(siya|si\s+jake)\s+(nakatira|galing|nakatara)|taga\s*(asa|saan)|tirahan|puy-?anan|kolor|kulay|pagkaon|pagkain|paborito|pinakaganahan|hilig|libangan|kalingawan|ganahan\s+(siya|si\s+jake)|gusto\s+(niya|ni\s+jake))\b/i;
-// Age is worked out per request so it stays right after each birthday (Manila time).
-const ageToday = () => {
-  const [y, m, d] = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' }).split('-').map(Number);
-  return y - 2005 - (m < 11 || (m === 11 && d < 8) ? 1 : 0);
-};
-const lifeFacts = () => `- Birthday: November 8, 2005 (he is ${ageToday()} years old)
-- Home: ${HOME_ADDRESS}
-- Favourite colours: red, black, and white
-- Favourite food: shrimp
-- Hobbies: guitar, art, tech, travel, design, music, and more. In short, Jake loves all kinds of art.`;
-const LIFE_PARTS: { re: RegExp; lines: () => string[] }[] = [
-  { re: /birth|bday|born|how\s+old|\bage\b/i, lines: () => [
-    `Jake was born on November 8, 2005, so he's ${ageToday()} years old!`,
-    `Jake's birthday is November 8! He was born in 2005, which makes him ${ageToday()}.`,
-  ] },
-  { re: /colou?r/i, lines: () => [
-    "Jake's favourite colours are red, black, and white!",
-    'Red, black, and white! Those are Jake\'s colours.',
-  ] },
-  { re: /food|dish|meal|eat/i, lines: () => [
-    "Jake's favourite food is shrimp!",
-    'Shrimp! Jake loves shrimp the most.',
-  ] },
-  { re: /hobb|free\s+time|fun|interest|passion|like|love|enjoy/i, lines: () => [
-    'Jake loves guitar, art, tech, travel, design, and music. In short, he loves all kinds of art!',
-    'Guitar, art, tech, travel, design, music... basically, Jake loves all kinds of art!',
-  ] },
-];
-const LIFE_HOME = [
-  `Jake lives at ${HOME_ADDRESS}!`,
-  `Jake's home is at ${HOME_ADDRESS}.`,
-];
-const lifeLine = (question: string) => pick(LIFE_PARTS.find((p) => p.re.test(question))?.lines() ?? LIFE_HOME);
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 export type ChatResult = {
@@ -398,9 +238,17 @@ const contactResult = (lang: Lang): ChatResult => ({
   body: { reply: CONTACT_REPLY[lang], character: GUIDES.contact.character, section: GUIDES.contact.section },
 });
 
-// Personal questions (girlfriend, family) are answered from fixed facts, worded fresh each time
-// (no seed, high temperature). `valid` rejects a reply that drifted off the facts; `fallback` covers that and outages.
-type Personal = { kind: 'girlfriend' | 'family' | 'life'; rules: string; valid: (reply: string) => boolean; fallback: (question: string) => string };
+// Keyword hits (api/_bmo.ts) are answered instantly. The widget normally handles them itself;
+// this covers callers that skip it. The kind flag tells the widget which GIF to show.
+const quickResult = (q: QuickReply): ChatResult => ({
+  status: 200,
+  body: { reply: q.reply, character: q.character, section: q.section, ...(q.kind !== 'contact' && { [q.kind]: true }) },
+});
+
+// Personal questions the keywords missed but the router caught are answered from fixed facts, worded
+// fresh each time (no seed, high temperature). `valid` rejects a reply that drifted off the facts;
+// `fallback` covers that and outages.
+type Personal = { kind: 'girlfriend' | 'family' | 'life'; rules: string; valid: (reply: string) => boolean; fallback: (question: string, lang: Lang) => string };
 
 const GIRLFRIEND: Personal = {
   kind: 'girlfriend',
@@ -408,7 +256,7 @@ const GIRLFRIEND: Personal = {
 Always call her "Ate Jessa Montebon" and call her his girlfriend (Cebuano: "uyab", Tagalog: "girlfriend" or "kasintahan"). NEVER call her a kabit, kerida, mistress, side chick, or "other woman". If the visitor asks about Jake's kabit, mistress, side chick, or another girl, say clearly that Jake has none: he is loyal and faithful to Ate Jessa only. If they ask whether Jake is single, say he's taken. Never invent other details (age, looks beyond the facts, how they met).`,
   // Must name her, and must not call anyone his kabit unless it's to deny it.
   valid: (r) => /jessa/i.test(r) && (!KABIT_RE.test(r) || /\b(wala|walay|way|dili|hindi|no|none|never|doesn't|does not|walang)\b/i.test(r)),
-  fallback: randomLine,
+  fallback: girlfriendLine,
 };
 
 const FAMILY: Personal = {
@@ -429,9 +277,9 @@ Answer only the part they asked about (e.g. just his favourite food if they ask 
   fallback: lifeLine,
 };
 
-const personalResult = async (p: Personal, question: string, apiKey: string | undefined): Promise<ChatResult> => {
+const personalResult = async (p: Personal, question: string, apiKey: string | undefined, lang: Lang): Promise<ChatResult> => {
   const done = (reply: string): ChatResult => ({ status: 200, body: { reply, character: 'BMO', [p.kind]: true } });
-  if (!apiKey) return done(p.fallback(question));
+  if (!apiKey) return done(p.fallback(question, lang));
   try {
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -459,11 +307,28 @@ Answer their exact question warmly and playfully in 1 to 3 short sentences, usin
     });
     const data = res.ok ? await res.json() : null;
     const reply = String(data?.choices?.[0]?.message?.content ?? '').trim().replace(/^"|"$/g, '');
-    return done(reply && p.valid(reply) ? reply : p.fallback(question));
+    return done(reply && p.valid(reply) ? reply : p.fallback(question, lang));
   } catch (err) {
     console.error(`${p.kind} reply failed`, err);
-    return done(p.fallback(question));
+    return done(p.fallback(question, lang));
   }
+};
+
+// Router answers are deterministic (temperature 0), so the same conversation always gets the same
+// reply: keep it for an hour and answer repeats (e.g. the suggestion chips) without a model call.
+const CACHE_TTL_MS = 60 * 60 * 1000;
+const CACHE_MAX = 300;
+const answerCache = new Map<string, { at: number; result: ChatResult }>();
+const cached = (key: string) => {
+  const hit = answerCache.get(key);
+  if (!hit) return null;
+  if (Date.now() - hit.at > CACHE_TTL_MS) { answerCache.delete(key); return null; }
+  return hit.result;
+};
+const remember = (key: string, result: ChatResult) => {
+  if (answerCache.size >= CACHE_MAX) answerCache.delete(answerCache.keys().next().value!);
+  answerCache.set(key, { at: Date.now(), result });
+  return result;
 };
 
 export async function handleChat(body: unknown, ip: string, apiKey: string | undefined): Promise<ChatResult> {
@@ -472,12 +337,11 @@ export async function handleChat(body: unknown, ip: string, apiKey: string | und
   if (!messages) return { status: 400, body: { error: 'BMO needs a question to answer.' } };
 
   const question = messages[messages.length - 1].content;
-  const mean = meanKind(question);
-  if (mean) return meanResult(mean, detectLang(question));
-  if (GIRLFRIEND_PATTERN.test(question)) return personalResult(GIRLFRIEND, question, apiKey);
-  if (FAMILY_PATTERN.test(question)) return personalResult(FAMILY, question, apiKey);
-  if (LIFE_PATTERN.test(question)) return personalResult(LIFE, question, apiKey);
-  if (CONTACT_PATTERN.test(question)) return contactResult(detectLang(question));
+  const quick = quickReply(question);
+  if (quick) return quickResult(quick);
+  const cacheKey = buildPrompt(messages);
+  const hit = cached(cacheKey);
+  if (hit) return hit;
   if (!apiKey) return { status: 500, body: { error: 'BMO is not plugged in yet (missing API key).' } };
 
   // Live GitHub data. A follow-up like "what's its live link?" falls back to the previous question's project.
@@ -518,14 +382,18 @@ export async function handleChat(body: unknown, ip: string, apiKey: string | und
 
     const { topic, answer } = parsed;
     const lang = parsed.lang ?? detectLang(question);
-    if (topic === OFF_TOPIC_TOPIC) return { status: 200, body: { offTopic: true } };
-    if (topic === MEAN_TOPIC) return meanResult(['threat', 'curse', 'fight'].includes(answer) ? (answer as Mean) : 'bully', lang);
-    if (topic === 'contact') return contactResult(lang);
-    if (topic === GIRLFRIEND_TOPIC) return personalResult(GIRLFRIEND, question, apiKey);
-    if (topic === FAMILY_TOPIC) return personalResult(FAMILY, question, apiKey);
-    if (topic === LIFE_TOPIC) return personalResult(LIFE, question, apiKey);
+    // Personal and mean replies are randomised on purpose, so they're not cached.
+    if (topic === MEAN_TOPIC) {
+      const kind: Mean = ['threat', 'curse', 'fight'].includes(answer) ? (answer as Mean) : 'bully';
+      return { status: 200, body: { reply: meanLine(kind, lang), character: 'BMO', mean: true } };
+    }
+    if (topic === GIRLFRIEND_TOPIC) return personalResult(GIRLFRIEND, question, apiKey, lang);
+    if (topic === FAMILY_TOPIC) return personalResult(FAMILY, question, apiKey, lang);
+    if (topic === LIFE_TOPIC) return personalResult(LIFE, question, apiKey, lang);
+    if (topic === OFF_TOPIC_TOPIC) return remember(cacheKey, { status: 200, body: { offTopic: true } });
+    if (topic === 'contact') return remember(cacheKey, contactResult(lang));
     if (topic === GREETING_TOPIC) {
-      return answer ? { status: 200, body: { reply: answer, character: 'BMO' } } : { status: 502, body: { error: 'BMO went blank. Try asking again!' } };
+      return answer ? remember(cacheKey, { status: 200, body: { reply: answer, character: 'BMO' } }) : { status: 502, body: { error: 'BMO went blank. Try asking again!' } };
     }
 
     const guide = GUIDES[topic as Topic];
@@ -534,9 +402,9 @@ export async function handleChat(body: unknown, ip: string, apiKey: string | und
       const links = repo
         ? [{ label: 'GitHub', url: repo.url }, ...(repo.homepage ? [{ label: 'Live site', url: repo.homepage }] : [])]
         : [{ label: "Jake's GitHub", url: GITHUB_PROFILE }];
-      return { status: 200, body: { reply: (repo ? REPO_OPENING : guide.opening)[lang] + answer, character: guide.character, section: guide.section, links } };
+      return remember(cacheKey, { status: 200, body: { reply: (repo ? REPO_OPENING : guide.opening)[lang] + answer, character: guide.character, section: guide.section, links } });
     }
-    return { status: 200, body: { reply: guide.opening[lang] + answer, character: guide.character, section: guide.section } };
+    return remember(cacheKey, { status: 200, body: { reply: guide.opening[lang] + answer, character: guide.character, section: guide.section } });
   } catch (err) {
     console.error('Chat request failed', err);
     return { status: 504, body: { error: 'BMO took too long to think. Try again!' } };
