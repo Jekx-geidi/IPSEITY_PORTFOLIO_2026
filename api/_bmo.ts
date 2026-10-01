@@ -4,8 +4,8 @@
 
 // BMO speaks English, Cebuano, and Tagalog. Without the model, the language is guessed from tell-tale words.
 export type Lang = 'en' | 'ceb' | 'tl';
-const CEB_WORDS = /\b(unsa|unsay|unsaon|asa|asay|kinsa|kinsay|kanus-a|pila|nimo|imong|iyang|iya|ug|nga|diay|karon|gyud|jud|ganahan|nagpuyo|taga|mao|naa|ani|ana|kaayo|kini|bitaw|lagi|sad|pud|dili|makontak|kontakon|uyab|igsoon|inahan|amahan|ig-agaw|natawo|bisaya|nako|tika|boang|buang|yawa+|piste|pisti|atay|giatay|bilat|oten|otin|hilom|walay|bobo|pangit|engot)\b/gi;
-const TL_WORDS = /\b(ano|saan|sino|kailan|ilan|ilang|taon|mo|po|ay|naman|talaga|gusto|nakatira|galing|ito|iyan|ngayon|hindi|meron|paano|bakit|kanyang|niyang|kapatid|magulang|pinsan|ipinanganak|kasintahan|tagalog|kita|ako|tanga|gago|ulol|tangina|putang|inamo|bwisit|leche|lintik|tumahimik|manahimik|walang|tonto)\b/gi;
+const CEB_WORDS = /\b(unsa|unsay|unsaon|asa|asay|kinsa|kinsay|kanus-a|pila|nimo|imong|iyang|iya|ug|nga|diay|karon|gyud|jud|ganahan|nagpuyo|taga|mao|naa|ani|ana|kaayo|kini|bitaw|lagi|sad|pud|dili|makontak|kontakon|uyab|igsoon|inahan|amahan|ig-agaw|natawo|bisaya|nako|tika|giunsa|gibuhat|pagbuhat|adlaw|boang|buang|yawa+|piste|pisti|atay|giatay|bilat|oten|otin|hilom|walay|bobo|pangit|engot)\b/gi;
+const TL_WORDS = /\b(ano|saan|sino|kailan|ilan|ilang|taon|mo|po|ay|naman|talaga|gusto|nakatira|galing|ito|iyan|ngayon|hindi|meron|paano|bakit|kanyang|niyang|kapatid|magulang|pinsan|ipinanganak|kasintahan|tagalog|kita|ako|ginawa|gumawa|binuo|araw|tanga|gago|ulol|tangina|putang|inamo|bwisit|leche|lintik|tumahimik|manahimik|walang|tonto)\b/gi;
 export const detectLang = (text: string): Lang => {
   const ceb = text.match(CEB_WORDS)?.length ?? 0;
   const tl = text.match(TL_WORDS)?.length ?? 0;
@@ -195,15 +195,60 @@ const LIFE_HOME = (): Lines => ({
 });
 export const lifeLine = fromParts(LIFE_PARTS, LIFE_HOME);
 
+// ---- How BMO was made ----
+export const MADE_PATTERN = new RegExp([
+  String.raw`how\s+(were|was|are|r)\s+(you|u|bmo)\s+(made|built|created|programmed|coded|developed|trained|done)`,
+  String.raw`how\s+(did|does)\s+(jake|he|riel)\s+(make|build|create|program|code|develop)\s+(you|u|bmo)`,
+  String.raw`who\s+(made|built|created|programmed|coded|developed|designed)\s+(you|u|bmo)`,
+  String.raw`how\s+(do|does)\s+(you|u|bmo)\s+work`,
+  String.raw`what\s+(are\s+you|is\s+bmo)\s+(made|built)\s+(of|with|from)`,
+  String.raw`how\s+long\s+.*\b(make|build|create|program)\s+(you|u|bmo)`,
+  String.raw`(your|bmo's)\s+(tech\s*stack|source\s*code|code|logic|knowledge)`,
+  String.raw`are\s+(you|u)\s+(an?\s+)?(ai|bot|chatbot|chatgpt|gpt|claude|real)`,
+  String.raw`giunsa\s+(ka|man\s+ka|si\s+bmo|nimo)\s+(pag-?)?(buhat|himo|program|code|bu?hat)`,
+  String.raw`giunsa\s+(ka|si\s+bmo)\s+pag`,
+  String.raw`unsaon\s+(ka|nimo)\s+pag-?(buhat|himo)`,
+  String.raw`kinsa\s+(ang\s+)?(nagbuhat|naghimo|nag-?program|nag-?code|nagdesign)\s+(nimo|nimu|kanimo|kang\s+bmo|ni\s+bmo|sa\s+bmo)`,
+  String.raw`pila\s+ka\s+adlaw\s+.*\b(gi|pag-?)?(buhat|himo)`,
+  String.raw`paano\s+(ka|si\s+bmo)\s+(ginawa|binuo|na-?program|gumagana|nagawa)`,
+  String.raw`paano\s+(ginawa|binuo)\s+(ka|si\s+bmo)`,
+  String.raw`sino\s+(ang\s+)?(gumawa|nagprogram|lumikha|bumuo)\s+(sa\s*iyo|sayo|sa'yo|kay\s+bmo|ng\s+bmo|kay\s+bmo)`,
+  String.raw`ilang\s+araw\s+.*\b(ginawa|binuo)`,
+  String.raw`(what|which)\s+(ai\s+)?(model|version|llm)\s+(are\s+(you|u)|is\s+bmo|do\s+(you|u)\s+(use|run))`,
+  String.raw`(your|bmo's)\s+(ai\s+)?(model|version|llm)`,
+  String.raw`unsa(y|ng)?\s+(imong|imo|nimong)\s+(model|version)`,
+  String.raw`unsa(y|ng)?\s+model\s+(nimo|ni\s+bmo)`,
+  String.raw`(ano|anong)\s+(ang\s+)?(model|version)\s+(mo|ni\s+bmo|ng\s+bmo)`,
+].map((p) => `\\b${p}`).join('|'), 'i');
+const MADE_LINES: Lines = {
+  en: [
+    "I'm BMO V-1, and Jake built me in just 3 days! I run on a knowledge parameter (Jake's profile and live GitHub), I speak English, Cebuano, and Tagalog, and I know which friend in Ooo to ask for every question. Claude assisted, but all the logic is Jake's. That's what a real software developer can do!",
+    "My model is BMO V-1! Jake designed and shipped me in only 3 days: a knowledge parameter so I know everything about him, smart routing to each character's section, instant replies, and three languages. Claude helped as an assistant, but the brains behind me are all Jake's. Pretty impressive, right?",
+    "BMO V-1, built by Jake in 3 days flat! He wired up my knowledge parameter, taught me three languages, and made me fast enough to answer before you blink. Claude assisted, but every bit of logic is Jake's. Imagine what he can build for you!",
+  ],
+  ceb: [
+    'BMO V-1 ang akong model, ug gibuhat ra ko ni Jake sulod sa 3 ka adlaw! Naa koy knowledge parameter (profile ug live GitHub ni Jake), kahibalo ko mo-English, Bisaya, ug Tagalog, ug kabalo ko kinsa nga higala sa Ooo ang pangutan-on sa matag pangutana. Nag-assist si Claude, pero kang Jake gyud ang logic. Mao na ang tinuod nga software developer!',
+    'Ako si BMO V-1! 3 days ra ko gidesign ug gibuhat ni Jake: knowledge parameter para kahibalo ko sa tanan bahin niya, smart routing sa matag seksyon, paspas nga tubag, ug tulo ka language. Nag-assist si Claude, pero ang utok nako kang Jake tanan. Grabe, sa?',
+    'BMO V-1, gibuhat ni Jake sulod ra sa 3 ka adlaw! Siya ang nag-wire sa akong knowledge parameter, nagtudlo nako og tulo ka language, ug naghimo nako nga paspas kaayo. Nag-assist si Claude, pero kang Jake ang tanang logic. Hunahunaa unsay mabuhat niya para nimo!',
+  ],
+  tl: [
+    'BMO V-1 ang model ko, at ginawa lang ako ni Jake sa loob ng 3 araw! May knowledge parameter ako (profile at live GitHub ni Jake), marunong ako ng English, Bisaya, at Tagalog, at alam ko kung sinong kaibigan sa Ooo ang tatanungin sa bawat tanong. Tumulong si Claude, pero kay Jake ang logic. Ganyan ang tunay na software developer!',
+    'Ako si BMO V-1! 3 araw lang akong dinisenyo at ginawa ni Jake: knowledge parameter para alam ko lahat tungkol sa kanya, smart routing sa bawat seksyon, mabilis na sagot, at tatlong language. Tumulong si Claude, pero lahat ng utak ko ay kay Jake. Galing, ’di ba?',
+    'BMO V-1, ginawa ni Jake sa loob lang ng 3 araw! Siya ang nag-set up ng knowledge parameter ko, tinuruan ako ng tatlong language, at ginawa akong napakabilis. Tumulong si Claude, pero kay Jake ang lahat ng logic. Isipin mo kung ano pa ang kaya niyang gawin para sa iyo!',
+  ],
+};
+export const madeLine = (lang: Lang) => pick(MADE_LINES[lang]);
+
 // ---- Instant replies ----
 // Keyword hits are answered right away, with no model call and no "thinking" bubble.
 // Anything that needs real thinking returns null and goes to the model.
-export type QuickKind = 'mean' | 'girlfriend' | 'family' | 'life' | 'contact';
+export type QuickKind = 'mean' | 'made' | 'girlfriend' | 'family' | 'life' | 'contact';
 export type QuickReply = { kind: QuickKind; reply: string; character: string; section?: string };
 export const quickReply = (text: string): QuickReply | null => {
   const lang = detectLang(text);
   const mean = meanKind(text);
   if (mean) return { kind: 'mean', reply: meanLine(mean, lang), character: 'BMO' };
+  if (MADE_PATTERN.test(text)) return { kind: 'made', reply: madeLine(lang), character: 'BMO' };
   if (GIRLFRIEND_PATTERN.test(text)) return { kind: 'girlfriend', reply: girlfriendLine(text, lang), character: 'BMO' };
   if (FAMILY_PATTERN.test(text)) return { kind: 'family', reply: familyLine(text, lang), character: 'BMO' };
   if (LIFE_PATTERN.test(text)) return { kind: 'life', reply: lifeLine(text, lang), character: 'BMO' };
