@@ -24,7 +24,14 @@ const devChatApi = (apiKey: string | undefined): Plugin => ({
       const url = new URL(req.url ?? '/', 'http://localhost');
       const header = (name: string) => [req.headers[name]].flat()[0];
       const ip = (req.socket.remoteAddress ?? '').replace(/^::ffff:/, '');
-      const result = await handleWhere(req.method ?? 'GET', url.searchParams.get('key'), ip, header);
+      let raw = '';
+      for await (const chunk of req) raw += chunk;
+      let body: { lat?: unknown; lon?: unknown } = {};
+      try { body = JSON.parse(raw); } catch { /* no GPS in the body */ }
+      const lat = Number(body.lat ?? url.searchParams.get('lat') ?? NaN);
+      const lon = Number(body.lon ?? url.searchParams.get('lon') ?? NaN);
+      const gps = Number.isFinite(lat) && Number.isFinite(lon) ? { lat, lon } : null;
+      const result = await handleWhere(req.method ?? 'GET', url.searchParams.get('key'), gps, ip, header);
       res.statusCode = result.status;
       res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify(result.body));

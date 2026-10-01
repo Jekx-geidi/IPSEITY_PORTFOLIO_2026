@@ -8,6 +8,7 @@ import { AnimatedAsset } from './components/PortfolioMotion/PortfolioMotion';
 import Logo from './components/Logo/Logo';
 import Reviews from './components/Reviews/Reviews';
 import BmoChat from './components/BmoChat/BmoChat';
+import CheckIn from './components/CheckIn/CheckIn';
 import TreasureChest from './components/TreasureChest/TreasureChest';
 import ScrollExpand from './components/ScrollExpand/ScrollExpand';
 import NumberTicker from './components/NumberTicker/NumberTicker';
@@ -1776,6 +1777,7 @@ export default function PortfolioPage() {
       </div>
       <KingdomTravel />
       <BmoChat />
+      <CheckIn />
     </div>
     </TravelContext.Provider>
     </ActiveSectionContext.Provider>
