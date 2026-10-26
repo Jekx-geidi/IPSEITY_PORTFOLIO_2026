@@ -5,7 +5,7 @@
 //                          the /?checkin= bookmark or MacroDroid) the place is resolved to barangay level;
 //                          without GPS the request's IPv4 address is used, which is only good for the province.
 //                          Only the place name is saved: never the coordinates or the IP.
-//   GET  /api/where        BMO reads the last check-in: { place, country, at } or { place: null }.
+//   GET  /api/where        the chat bot reads the last check-in: { place, country, at } or { place: null }.
 //
 // Storage is Upstash Redis over its REST API (Vercel Marketplace sets KV_REST_API_URL / _TOKEN).
 
@@ -58,7 +58,7 @@ const PH_CITY_PROVINCE: Record<string, string> = {
 //   precise (GPS): "Brgy. Lahug, Cebu City, Cebu"     coarse (IP): "Cebu Province"
 const placeName = async ({ lat, lon }: Coords, precise: boolean) => {
   const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=${precise ? 18 : 10}&lat=${lat}&lon=${lon}`, {
-    headers: { 'User-Agent': 'jake-portfolio-bmo/1.0 (https://profilio-e26e.vercel.app)', 'Accept-Language': 'en' },
+    headers: { 'User-Agent': 'jake-portfolio-bot/1.0 (https://profilio-e26e.vercel.app)', 'Accept-Language': 'en' },
   });
   const { address = {} } = await res.json() as { address?: Record<string, string> };
   const city = address.city || address.town || address.municipality;

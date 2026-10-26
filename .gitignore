@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# local copy of the old Adventure Time version (already in git history)
+_backup_adventure_time/

@@ -51,14 +51,31 @@ I describe my mindset as "living technology": keep learning, keep shipping, and 
 - Created UI/UX prototypes in Figma
 - Delivered branding and digital marketing assets
 
-**Technical Maintenance, HI-Light Digital Studio** (2023 – 2024)
+**Job Order Documentator / PIO, Mandaue City Hall (Mayor's Office)** (2023 – 2024)
+- Documented city events and programmes as a job-order documentator
+- Served as Public Information Officer (PIO) in the Mayor's Office
+
+**Editor / Photographer / Encoder and Technical Maintenance, HI-Light Digital Studio (HighLight Studio)** (2023 – 2024)
+- Edited photos and videos, shot photography, and encoded projects
 - Provided technical maintenance and system updates
 - Helped improve website performance
 
+**Photojournalist & Editorial Cartoonist, SunStar Cebu** (2023)
+- Covered stories as a photojournalist and drew editorial cartoons
+
+**Videographer / Photographer / Editor, EJ Cortes (Brgy. Paknaan Councilor)**
+- Shot and edited photo and video coverage for the councilor's office
+
 **Creative Intern / OJT, Scarlett Digital Services (Scarlett DPS)** (2022 – 2023)
-- Completed Senior High School on-the-job training
+- Completed Senior High School on-the-job training as a tarpaulin operator
 - Earned NC II certification in UI/UX Design and Visual Graphics
 - Created UI prototypes with Figma and Adobe tools
+
+**Video Editor for Bisdak influencers** (2022, during the pandemic)
+- Edited videos for Cebuano content creators such as Joseph Sabello, Patrick and Abby, and Jayat
+
+**Digital products seller, Amazon Kindle (worldwide) and Etsy (Philippines)** (freelance)
+- Designs and sells digital products
 
 ---
 
@@ -87,6 +104,13 @@ Science curriculum, which gave me the academic foundation for a technical and cr
 - **USJ-R Capstone (2026)**: Business Analyst for our capstone project
 - **AMA ACLC College of Mandaue (2023)**: Layout Grids, Components, Color Psychology and Design Fundamentals Workshop
 - **Don Macchiatos (2023)**: Awarded Best Technical Manager (December 2023)
+- **Don Macchiatos (2021)**: One of the designers of the first Don Macchiatos logo
+- **USJ-R CWTS (2025)**: Champion, Poster Making Contest, Dance and Band
+- **USJ-R CWTS Battle of the Beat (2025)**: Champion
+- **Sinulog Photography Contest (2023)**: Champion
+- **Mental Health Awareness Poster Making Contest (2024)**: 3rd Place
+- **ACLC College of Mandaue**: Best in Character Sketching
+- **NC II**: UI/UX Design and Visual Graphics (earned during Senior High School OJT)
 
 ---
 

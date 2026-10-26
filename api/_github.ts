@@ -1,4 +1,4 @@
-// Live project data for the BMO chat, read from Jake's GitHub. Only PUBLIC repos
+// Live project data for the Profilio Bot chat, read from Jake's GitHub. Only PUBLIC repos
 // are ever read (the /users/:user/repos endpoint never returns private ones, and
 // we filter again), so nothing private can reach the chat even with a token.
 // GITHUB_TOKEN is optional: it only raises GitHub's rate limit (60 -> 5000/hr).
@@ -33,7 +33,7 @@ const readmeCache = new Map<string, Cached<string>>();
 
 const headers = (token?: string, raw = false): Record<string, string> => ({
   Accept: raw ? 'application/vnd.github.raw' : 'application/vnd.github+json',
-  'User-Agent': 'jake-portfolio-bmo',
+  'User-Agent': 'jake-portfolio-bot',
   ...(token ? { Authorization: `Bearer ${token}` } : {}),
 });
 

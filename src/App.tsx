@@ -1,45 +1,55 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { ActiveSectionContext, TravelContext, useActiveSection, useSectionActive, useTrackActiveSection } from './activeSection';
-import SectionBackdrop from './components/SectionBackdrop/SectionBackdrop';
-import KingdomTravel from './components/KingdomTravel/KingdomTravel';
-import { AnimatedAsset } from './components/PortfolioMotion/PortfolioMotion';
-import Logo from './components/Logo/Logo';
-import Reviews from './components/Reviews/Reviews';
-import BmoChat from './components/BmoChat/BmoChat';
+import ChatBot from './components/ChatBot/ChatBot';
 import CheckIn from './components/CheckIn/CheckIn';
-import TreasureChest from './components/TreasureChest/TreasureChest';
-import ScrollExpand from './components/ScrollExpand/ScrollExpand';
 import NumberTicker from './components/NumberTicker/NumberTicker';
-import { DiaTextReveal } from './components/DiaTextReveal/DiaTextReveal';
-import { 
-  Linkedin, 
-  Instagram,  
-  Plus, 
-  Minus, 
-  ArrowUpRight, 
-  ChevronLeft,
-  ChevronRight,
-  Mail,
-  Phone,
+import { reviews } from './components/Reviews/Reviews';
+import {
+  Linkedin,
+  Instagram,
   Facebook,
   Github,
+  Plus,
+  Minus,
+  ArrowRight,
+  ArrowUpRight,
+  ArrowDownRight,
+  ChevronsRight,
+  Mail,
+  Phone,
+  MapPin,
+  Globe,
+  Asterisk,
+  Crosshair,
   Download,
+  Menu,
+  X,
+  Lock,
+  Send,
+  BadgeCheck,
   Code2,
   Layers,
   Database,
   Bot,
   Palette,
   Wrench,
-  Menu,
-  X,
-  Play,
-  Pause,
-  Lock
+  PenTool,
+  Megaphone,
+  Clapperboard,
+  CalendarDays,
+  Rocket,
+  Star,
+  Trophy,
+  Award,
+  Camera,
+  Film,
+  Printer,
+  ShoppingBag
 } from 'lucide-react';
 
-// --- Components ---
+
+// --- Shared bits ---
 
 const FadeIn = ({ children, delay = 0, direction = 'up', className = "" }: { children: React.ReactNode, delay?: number, direction?: 'up' | 'left' | 'right', className?: string }) => {
   const variants = {
@@ -53,7 +63,6 @@ const FadeIn = ({ children, delay = 0, direction = 'up', className = "" }: { chi
       viewport={{ once: true, margin: "-50px" }}
       transition={{ duration: 0.7, delay, ease: [0.21, 0.47, 0.32, 0.98] }}
       className={className}
-      data-motion-card={className.includes("motion-stat") || undefined}
       variants={variants}
     >
       {children}
@@ -61,45 +70,34 @@ const FadeIn = ({ children, delay = 0, direction = 'up', className = "" }: { chi
   );
 };
 
-// Navbar look per section (see activeSection.ts). Each also sets the hover
-// colour of .nav-link so links stay readable on that section's surface.
-const NAV_THEMES: Record<string, string> = {
-  home:      'bg-jake-cream/90 border-jake-wood/25 text-jake-ink [&_.nav-link:hover]:text-jake-wood',
-  services:  'bg-bmo-screen/90 border-bmo-ink/20 text-bmo-ink [&_.nav-link:hover]:text-bmo-slot',
-  about:     'bg-finn-hat/90 border-finn-ink/15 text-finn-ink [&_.nav-link:hover]:text-finn-shorts',
-  journey:   'bg-marcy-hair/85 border-marcy-skin/15 text-marcy-skin [&_.nav-link:hover]:text-marcy-red',
-  education: 'bg-gunter-belly/95 border-gunter-navy/15 text-gunter-navy [&_.nav-link:hover]:text-gunter-gold-deep',
-  portfolio: 'bg-pb-skin/90 border-pb-magenta/20 text-pb-ink [&_.nav-link:hover]:text-pb-magenta',
-  reviews:   'bg-fire-ember/85 border-fire-hair/20 text-fire-cream [&_.nav-link:hover]:text-fire-gold',
-  tools:     'bg-rain-blush/90 border-rain-purple/20 text-rain-ink [&_.nav-link:hover]:text-rain-purple',
-  faq:       'bg-lsp-mist/90 border-lsp-deep/15 text-lsp-deep [&_.nav-link:hover]:text-lsp-ink',
-  contact:   'bg-ik-navy/85 border-ik-skin/20 text-white [&_.nav-link:hover]:text-ik-crown',
-};
-const NAV_DEFAULT = 'bg-white/70 border-black/5 text-ink';
+// Section title in a clipped lime-outlined box, with a short blurb beside it
+// (the "SELECTED WORK ↘" header from the reference design).
+const SectionHead = ({ top, bottom, blurb, children }: { top: string, bottom: string, blurb?: string, children?: React.ReactNode }) => (
+  <FadeIn className="mb-10 md:mb-14 flex flex-col md:flex-row md:items-center gap-5 md:gap-10">
+    <div className="cut self-start bg-lime/80 p-px">
+      <div className="cut bg-void flex items-end gap-6 pl-6 pr-5 py-4">
+        <h2 className="font-display font-bold uppercase text-2xl md:text-3xl leading-[1.05] tracking-wide text-lime">
+          {top}<br />{bottom}
+        </h2>
+        <ArrowDownRight className="text-lime mb-1 shrink-0" size={26} strokeWidth={1.5} />
+      </div>
+    </div>
+    {blurb && <p className="max-w-sm text-sm md:text-base text-mist leading-relaxed">{blurb}</p>}
+    {children && <div className="md:ml-auto">{children}</div>}
+  </FadeIn>
+);
 
-// Download Resume button per section, in that character's colours. (Themed
-// entries use plain bg utilities; title-bg is only the default, since its
-// unlayered gradient would override them.)
-const RESUME_THEMES: Record<string, string> = {
-  home:      'bg-jake-fur text-jake-hoodie border-2 border-jake-hoodie shadow-jake-wood/40',
-  services:  'bg-bmo-pink text-bmo-ink border-2 border-bmo-ink shadow-bmo-ink/25',
-  about:     'bg-finn-shorts text-white border-2 border-finn-ink shadow-finn-ink/25',
-  journey:   'bg-marcy-red text-white border-2 border-marcy-skin/40 shadow-marcy-red/40',
-  education: 'bg-gunter-gown text-gunter-gold border-2 border-gunter-gold shadow-gunter-navy/30',
-  portfolio: 'bg-pb-pink text-white border-2 border-pb-ink shadow-pb-magenta/30',
-  reviews:   'bg-linear-to-b from-fire-gold via-fire-hair to-fire-flame text-fire-ember border-2 border-fire-gold/60 shadow-fire-flame/40',
-  tools:     'bg-rain-purple text-white border-2 border-rain-ink shadow-rain-pink/50',
-  faq:       'bg-lsp-body text-lsp-ink border-2 border-lsp-ink shadow-lsp-deep/30',
-  contact:   'bg-ik-crown text-ik-navy border-2 border-ik-navy shadow-ik-crown/40',
-};
-const RESUME_DEFAULT = 'title-bg text-white border-2 border-transparent shadow-title/30';
+const Kicker = ({ children, className = "" }: { children: React.ReactNode, className?: string }) => (
+  <p className={`font-mono text-[11px] md:text-xs uppercase tracking-[0.25em] text-mist ${className}`}>{children}</p>
+);
 
-// Shared by the navbar (desktop row + mobile menu) and the footer.
 const NAV_LINKS = [
+  { href: '#work', label: 'Work' },
   { href: '#services', label: 'Services' },
-  { href: '#education', label: 'Education' },
-  { href: '#portfolio', label: 'Portfolio' },
-  { href: '#about', label: 'About' },
+  { href: '#journey', label: 'Journey' },
+  { href: '#experience', label: 'Experience' },
+  { href: '#tools', label: 'Tools' },
+  { href: '#reviews', label: 'Reviews' },
   { href: '#contact', label: 'Contact' }
 ];
 const SOCIAL_LINKS = [
@@ -108,57 +106,24 @@ const SOCIAL_LINKS = [
   { href: 'https://www.facebook.com/Engana08', label: 'Facebook', Icon: Facebook },
   { href: 'https://github.com/Jekx-geidi', label: 'GitHub', Icon: Github }
 ];
+const RESUME_HREF = "/RIEL JAKE_ENGANA _VERCEL RESUME_ Geidi.jpg";
 
-// Background song toggle. Browsers block autoplay (scrolling doesn't count as a
-// user gesture), so the visitor starts it with a tap; it loops while playing.
-const SONG_SRC = '/' + encodeURIComponent('Island Song (Come Along with Me) (feat. Ashley Eriksson).mp3');
+const BrandMark = ({ className = "" }: { className?: string }) => (
+  <span className={`inline-flex items-center gap-2.5 ${className}`}>
+    <Crosshair className="text-lime shrink-0" size={20} strokeWidth={1.75} />
+    <span className="font-mono text-xs md:text-sm font-bold uppercase tracking-[0.2em] text-white">Profilio<span className="text-lime">.</span></span>
+  </span>
+);
 
-const MusicToggle = ({ className = "" }: { className?: string }) => {
-  const audioRef = React.useRef<HTMLAudioElement | null>(null);
-  const [playing, setPlaying] = useState(false);
+// --- Navbar ---
 
-  const toggle = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (audio.paused) audio.play().catch(() => setPlaying(false));
-    else audio.pause();
-  };
-
-  return (
-    <>
-      <audio
-        ref={audioRef}
-        src={SONG_SRC}
-        loop
-        preload="none"
-        onPlay={() => setPlaying(true)}
-        onPause={() => setPlaying(false)}
-      />
-      <button
-        type="button"
-        onClick={toggle}
-        aria-pressed={playing}
-        aria-label={playing ? 'Pause song' : 'Play song'}
-        title={playing ? 'Pause song' : 'Play song: Island Song'}
-        className={`w-10 h-10 shrink-0 rounded-full border border-current/25 flex items-center justify-center hover:bg-current/10 transition-colors ${className}`}
-      >
-        {playing ? <Pause size={18} /> : <Play size={18} className="translate-x-px" />}
-      </button>
-    </>
-  );
-};
-
-// Desktop/laptop (lg+): full link row + Resume. Phones/tablets: logo, Resume
-// and a burger that drops a menu panel in the current section's theme.
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const section = useActiveSection();
-  const theme = (section && NAV_THEMES[section]) || NAV_DEFAULT;
-  const resumeTheme = (section && RESUME_THEMES[section]) || RESUME_DEFAULT;
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 50);
+    const handleScroll = () => setIsScrolled(window.scrollY > 40);
+    handleScroll();
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -174,9 +139,6 @@ const Navbar = () => {
     return () => { window.removeEventListener('keydown', onKey); desktop.removeEventListener('change', onResize); };
   }, [menuOpen]);
 
-  // An open menu needs a solid bar even at the very top of the page.
-  const solid = isScrolled || menuOpen;
-
   // Mobile menu links scroll by hand: on touch screens the tap gesture cancels the
   // browser's smooth anchor scroll (the hash changed but the page never moved).
   const goToSection = (event: React.MouseEvent<HTMLAnchorElement>, href: string) => {
@@ -191,42 +153,48 @@ const Navbar = () => {
     }, 80);
   };
 
+  const solid = isScrolled || menuOpen;
+
   return (
-    <nav
-      className={`fixed z-50 transition-all duration-500 ${
-        solid
-          ? `top-3 md:top-4 left-3 right-3 md:left-6 md:right-6 lg:left-12 lg:right-12 rounded-xl backdrop-blur-xl shadow-lg border ${theme}`
-          : 'top-0 left-0 right-0 rounded-none bg-transparent border border-transparent text-ink'
-      }`}
-    >
-      <div className={`flex justify-between items-center gap-3 px-4 md:px-6 transition-all duration-500 ${solid ? 'py-3 md:py-4' : 'py-5 md:py-6'}`}>
-        <a href="#" className="flex items-center shrink-0" onClick={() => setMenuOpen(false)}>
-          <Logo className="text-lg md:text-2xl" />
+    <nav className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${solid ? 'bg-void/85 backdrop-blur-xl border-b border-electric-soft/25' : 'bg-transparent border-b border-transparent'}`}>
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 px-5 md:px-10 py-4">
+        <a href="#" onClick={() => setMenuOpen(false)} aria-label="Back to top">
+          <BrandMark />
         </a>
-        <div className="hidden lg:flex items-center gap-8 font-medium">
+
+        <div className="hidden lg:flex items-center gap-1">
+          <span className="mr-4 h-px w-16 bg-electric-soft/50" aria-hidden="true" />
           {NAV_LINKS.map((l) => (
-            <a key={l.href} href={l.href} className="nav-link hover:text-jake transition-colors">{l.label}</a>
+            <a key={l.href} href={l.href} className="px-3 py-1.5 font-mono text-xs uppercase tracking-[0.2em] text-mist hover:text-lime transition-colors">
+              {l.label}
+            </a>
           ))}
         </div>
-        <div className="flex items-center gap-2 md:gap-4 lg:gap-6">
+
+        <div className="flex items-center gap-3">
+          <span className="hidden xl:inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-mist">
+            Available for freelance
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-lime opacity-60 animate-ping" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-lime" />
+            </span>
+          </span>
           <a
-            href="/RIEL JAKE_ENGANA _VERCEL RESUME_ Geidi.jpg"
+            href={RESUME_HREF}
             download
-            className={`flex items-center gap-2 ${resumeTheme} px-3.5 md:px-6 py-2 rounded-full font-semibold text-xs md:text-sm hover:scale-105 transition-all duration-300 shadow-lg`}
+            className="cut-sm inline-flex items-center gap-2 bg-lime text-void px-4 py-2.5 font-mono text-[11px] md:text-xs font-bold uppercase tracking-[0.15em] hover:bg-white transition-colors"
           >
-            <Download size={16}/>
-            <span className="hidden sm:inline">Download Resume</span>
-            <span className="inline sm:hidden">Resume</span>
+            <Download size={15} />
+            <span className="hidden sm:inline">Resume</span>
+            <span className="sm:hidden">CV</span>
           </a>
-          {/* Mobile: between Resume and the burger. Desktop: left of Resume. */}
-          <MusicToggle className="lg:order-first" />
           <button
             type="button"
             onClick={() => setMenuOpen((o) => !o)}
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
             aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-            className="lg:hidden w-10 h-10 shrink-0 rounded-full border border-current/25 flex items-center justify-center hover:bg-current/10 transition-colors"
+            className="lg:hidden w-10 h-10 shrink-0 border border-electric-soft/40 text-white flex items-center justify-center hover:border-lime hover:text-lime transition-colors"
           >
             {menuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
@@ -244,27 +212,20 @@ const Navbar = () => {
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
           >
-            <div className="px-4 md:px-6 pb-5 border-t border-current/10">
-              <ul className="flex flex-col pt-2">
-                {NAV_LINKS.map((l, i) => (
-                  <motion.li
-                    key={l.href}
-                    initial={{ opacity: 0, x: -12 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.05 + i * 0.04 }}
+            <ul className="px-5 md:px-10 pb-6 border-t border-electric-soft/20">
+              {NAV_LINKS.map((l, i) => (
+                <li key={l.href}>
+                  <a
+                    href={l.href}
+                    onClick={(e) => goToSection(e, l.href)}
+                    className="flex items-center justify-between py-4 border-b border-electric-soft/15 font-display text-xl font-bold uppercase tracking-wide text-white hover:text-lime transition-colors"
                   >
-                    <a
-                      href={l.href}
-                      onClick={(e) => goToSection(e, l.href)}
-                      className="nav-link flex items-center justify-between py-3 text-xl font-display font-bold border-b border-current/10 transition-colors"
-                    >
-                      {l.label}
-                      <ArrowUpRight size={18} className="opacity-50" />
-                    </a>
-                  </motion.li>
-                ))}
-              </ul>
-            </div>
+                    <span><span className="font-mono text-xs text-lime mr-3">0{i + 1}</span>{l.label}</span>
+                    <ArrowUpRight size={18} className="opacity-50" />
+                  </a>
+                </li>
+              ))}
+            </ul>
           </motion.div>
         )}
       </AnimatePresence>
@@ -272,83 +233,7 @@ const Navbar = () => {
   );
 };
 
-// Coding Jake that waves and says hi on hover (tap toggles on touch screens).
-// Both images share one crop (see public/jake-*.webp) so the swap doesn't shift.
-const HeroJake = () => {
-  const [waving, setWaving] = useState(false);
-  // Touch taps also fire emulated mouse-enter then click, which toggled the wave on and
-  // straight back off. Hover (mouse only) shows it; a tap/click toggles it once.
-  const pointerType = React.useRef<string>('mouse');
-
-  return (
-    <div
-      className="relative w-full max-w-xl lg:w-[125%] lg:max-w-none cursor-pointer select-none"
-      role="button"
-      tabIndex={0}
-      aria-label="Say hello to Jake"
-      aria-pressed={waving}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          setWaving(w => !w);
-        }
-      }}
-      onPointerDown={(e) => { pointerType.current = e.pointerType; }}
-      onPointerEnter={(e) => { if (e.pointerType === 'mouse') setWaving(true); }}
-      onPointerLeave={(e) => { if (e.pointerType === 'mouse') setWaving(false); }}
-      onBlur={() => setWaving(false)}
-      onClick={() => { if (pointerType.current !== 'mouse') setWaving(w => !w); pointerType.current = 'mouse'; }}
-    >
-      <motion.div
-        animate={waving ? { y: [0, -14, 0], rotate: [0, -1.5, 1.5, 0] } : { y: 0, rotate: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-        className="relative"
-      >
-        <img
-          src="/jake-coding.webp"
-          alt="Jake the Dog coding on a laptop at a desk"
-          width={1200}
-          height={671}
-          className={`w-full h-auto drop-shadow-2xl transition-opacity duration-200 ${waving ? 'opacity-0' : 'opacity-100'}`}
-          draggable={false}
-        />
-        <img
-          src="/jake-wave.webp"
-          alt=""
-          aria-hidden="true"
-          width={1200}
-          height={671}
-          className={`absolute inset-0 w-full h-auto drop-shadow-2xl transition-opacity duration-200 ${waving ? 'opacity-100' : 'opacity-0'}`}
-          draggable={false}
-        />
-      </motion.div>
-
-      <AnimatePresence>
-        {waving && (
-          // Phones/tablets: centred above Jake's head. lg+: beside his head (left 62%). The outer
-          // div positions (no transform) so motion's scale/y on the inner one can't undo it.
-          <div key="jake-hi" className="absolute inset-x-0 -top-14 lg:-top-10 lg:inset-x-auto lg:left-[62%] z-10 flex justify-center lg:block pointer-events-none">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.4, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.6, y: 6 }}
-            transition={{ type: "spring", stiffness: 420, damping: 18 }}
-            style={{ transformOrigin: 'bottom center' }}
-            role="status"
-          >
-            <div className="relative whitespace-nowrap rounded-2xl border-4 border-ink bg-white px-5 py-2.5 md:px-5 md:py-3 font-display text-2xl md:text-3xl text-ink shadow-[4px_4px_0_var(--color-ink)]">
-              Hi I am <span className="text-jake">Jake!</span>
-              {/* Bubble tail pointing down-left toward Jake's head */}
-              <span className="absolute -bottom-[14px] left-5 h-0 w-0 border-x-[10px] border-t-[14px] border-x-transparent border-t-ink" />
-              <span className="absolute -bottom-[8px] left-[23px] h-0 w-0 border-x-[7px] border-t-[10px] border-x-transparent border-t-white" />
-            </div>
-          </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
+// --- Hero ---
 
 const PROFILE_TEXT = [
   "Hi, I'm Riel Jake Engaña, a Software-Augmented Software Developer Intern at Geidi IT, specializing in AI automation and intelligent software systems. My work focuses on developing AI-augmented applications, autonomous agents, and agentic workflows capable of reasoning, planning, and executing complex tasks.",
@@ -356,26 +241,25 @@ const PROFILE_TEXT = [
   "Currently, I contribute to the development and deployment of production-ready AI-augmented and agentic systems at Geidi IT while completing my degree in Software Development at the University of San Jose–Recoletos (USJ-R)."
 ].join("\n\n");
 
-// "Read Profile": the parchment unrolls, then the bio is written onto it a few
-// letters at a time in handwriting, and signed. Skip / Esc / backdrop close.
-const ProfileScroll = ({ onClose }: { onClose: () => void }) => {
+// "Read Profile": a terminal window that types the bio out. Skip / Esc / backdrop close.
+const ProfileTerminal = ({ onClose }: { onClose: () => void }) => {
   const reduceMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const [count, setCount] = useState(reduceMotion ? PROFILE_TEXT.length : 0);
   const done = count >= PROFILE_TEXT.length;
   const closeRef = React.useRef<HTMLButtonElement>(null);
   const textRef = React.useRef<HTMLDivElement>(null);
 
-  // write ~2 letters every 22ms, starting once the paper has unrolled
+  // type ~3 characters every 18ms, after the window has opened
   useEffect(() => {
     if (done) return;
     let tick: ReturnType<typeof setInterval> | undefined;
     const start = setTimeout(() => {
-      tick = setInterval(() => setCount((c) => Math.min(PROFILE_TEXT.length, c + 2)), 22);
-    }, 700);
+      tick = setInterval(() => setCount((c) => Math.min(PROFILE_TEXT.length, c + 3)), 18);
+    }, 400);
     return () => { clearTimeout(start); if (tick) clearInterval(tick); };
   }, [done]);
 
-  // keep the pen in view as the text grows
+  // keep the caret in view as the text grows
   useEffect(() => {
     const el = textRef.current;
     if (el && !done) el.scrollTop = el.scrollHeight;
@@ -393,805 +277,782 @@ const ProfileScroll = ({ onClose }: { onClose: () => void }) => {
 
   return (
     <motion.div
-      className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-jake-hoodie/70 backdrop-blur-sm"
+      className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-void/80 backdrop-blur-md"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={onClose}
       role="dialog"
       aria-modal="true"
-      aria-labelledby="profile-scroll-title"
+      aria-labelledby="profile-title"
     >
       <motion.div
-        className="parchment @container relative flex w-[min(94vw,880px)] h-[min(90vh,1040px)] drop-shadow-[0_24px_40px_rgba(0,0,0,0.45)]"
-        style={{ transformOrigin: 'center' }}
-        initial={{ scaleY: 0.08, opacity: 0, rotate: -2 }}
-        animate={{ scaleY: 1, opacity: 1, rotate: 0 }}
-        exit={{ scaleY: 0.08, opacity: 0 }}
-        transition={{ type: 'spring', stiffness: 140, damping: 18 }}
+        className="cut w-[min(94vw,820px)] max-h-[85vh] flex flex-col bg-navy border border-electric-soft/40 shadow-[0_0_80px_rgb(30_55_255/0.35)]"
+        initial={{ scale: 0.92, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 220, damping: 24 }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="relative flex-1 min-w-0 flex flex-col px-[2cqw] pt-[1cqw]">
-          <h2 id="profile-scroll-title" className="handwriting font-bold text-[clamp(26px,min(7cqw,5vh),54px)] leading-none -rotate-2 mb-[0.5em]">
-            About me
-          </h2>
-          <div
-            ref={textRef}
-            className="handwriting flex-1 min-h-0 overflow-y-auto no-scrollbar whitespace-pre-line text-[clamp(15px,min(3.4cqw,2.45vh),24px)] leading-[1.32] -rotate-[0.3deg] pr-1"
-            aria-live="off"
-          >
-            <span className="sr-only">{PROFILE_TEXT}</span>
-            <span aria-hidden="true">
-              {PROFILE_TEXT.slice(0, count)}
-              {!done && <span className="pen-tip" />}
-            </span>
+        <div className="flex items-center gap-3 px-5 py-3 border-b border-electric-soft/30 bg-electric/20">
+          <span className="flex gap-1.5" aria-hidden="true">
+            <span className="w-3 h-3 rounded-full bg-lime" />
+            <span className="w-3 h-3 rounded-full bg-electric-soft" />
+            <span className="w-3 h-3 rounded-full bg-mist/50" />
+          </span>
+          <h2 id="profile-title" className="font-mono text-xs uppercase tracking-[0.2em] text-mist">~/riel-jake/about.md</h2>
+          <div className="ml-auto flex items-center gap-2">
+            {!done && (
+              <button type="button" onClick={() => setCount(PROFILE_TEXT.length)} className="font-mono text-[11px] uppercase tracking-widest text-lime border border-lime/50 px-3 py-1 hover:bg-lime hover:text-void transition-colors">
+                Skip
+              </button>
+            )}
+            <button ref={closeRef} type="button" onClick={onClose} aria-label="Close profile" className="w-8 h-8 flex items-center justify-center text-white border border-electric-soft/40 hover:border-lime hover:text-lime transition-colors">
+              <X size={16} />
+            </button>
           </div>
-          {done && (
-            <motion.div
-              className="self-end mt-1 flex flex-col items-end"
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <span className="handwriting font-bold text-[clamp(24px,min(6cqw,4.4vh),46px)] leading-none -rotate-3">— Jake</span>
-              <svg viewBox="0 0 140 14" className="w-28 h-3 -mt-1" aria-hidden="true">
-                <motion.path
-                  d="M2 9 C 30 2, 60 13, 90 6 S 130 4, 138 8"
-                  fill="none"
-                  stroke="#2B1A0A"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  initial={{ pathLength: 0 }}
-                  animate={{ pathLength: 1 }}
-                  transition={{ duration: 0.8, delay: 0.3 }}
-                />
-              </svg>
-            </motion.div>
-          )}
+        </div>
+        <div ref={textRef} className="overflow-y-auto no-scrollbar p-6 md:p-8 font-mono text-sm md:text-base leading-relaxed text-white/90 whitespace-pre-line">
+          <p className="text-lime mb-4">$ cat about.md</p>
+          <span className="sr-only">{PROFILE_TEXT}</span>
+          <span aria-hidden="true">
+            {PROFILE_TEXT.slice(0, count)}
+            <span className="caret" />
+          </span>
         </div>
       </motion.div>
-
-      <div className="absolute top-4 right-4 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-        {!done && (
-          <button
-            type="button"
-            onClick={() => setCount(PROFILE_TEXT.length)}
-            className="rounded-full bg-jake-fur text-jake-hoodie border-2 border-jake-hoodie px-4 py-2 text-sm font-bold uppercase tracking-widest"
-          >
-            Skip
-          </button>
-        )}
-        <button
-          ref={closeRef}
-          type="button"
-          onClick={onClose}
-          aria-label="Close profile"
-          className="w-11 h-11 rounded-full bg-white text-jake-hoodie border-2 border-jake-hoodie flex items-center justify-center text-xl font-bold"
-        >
-          ✕
-        </button>
-      </div>
     </motion.div>
   );
 };
 
-// Sweep colours for the headline reveal: Jake's fur, desk, and the books on it.
-const JAKE_SWEEP = ['#F9BB00', '#DE8234', '#B5352E', '#2E4C7C', '#285039'];
+// Circular text badge that slowly rotates around a globe.
+// Size and position come from className, so nothing here can clash with them.
+const SpinBadge = ({ className = "relative w-32 h-32" }: { className?: string }) => (
+  <div className={className} aria-hidden="true">
+    <svg viewBox="0 0 120 120" className="spin-slow absolute inset-0 w-full h-full">
+      <defs>
+        <path id="badge-circle" d="M60,60 m-46,0 a46,46 0 1,1 92,0 a46,46 0 1,1 -92,0" />
+      </defs>
+      <circle cx="60" cy="60" r="58" fill="none" stroke="rgb(169 180 232 / 0.35)" strokeWidth="1" />
+      <text className="font-mono" fontSize="9.5" letterSpacing="3.2" fill="#A9B4E8">
+        <textPath href="#badge-circle">AGENTS • AUTOMATION • SOFTWARE •</textPath>
+      </text>
+    </svg>
+    <div className="absolute inset-[30%] rounded-full border border-electric-soft/60 flex items-center justify-center text-white">
+      <Globe className="w-[45%] h-[45%]" strokeWidth={1} />
+    </div>
+  </div>
+);
 
-// Jake-themed hero: warm cream -> golden backdrop over the Tree Fort scene,
-// cocoa headline with Jake-orange "AI" and Jake-yellow "Software" (orange offset shadow),
-// desk-book coloured tags, and Jake at his desk.
+const HeroPhoto = () => {
+  const [waving, setWaving] = useState(false);
+  // Touch taps also fire emulated mouse-enter then click; hover (mouse only) shows
+  // the greeting and a tap/click toggles it once.
+  const pointerType = React.useRef<string>('mouse');
+
+  return (
+    <div
+      className="absolute inset-x-0 bottom-0 h-[94%] flex justify-center cursor-pointer select-none"
+      role="button"
+      tabIndex={0}
+      aria-label="Say hello to Jake"
+      aria-pressed={waving}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          setWaving(w => !w);
+        }
+      }}
+      onPointerDown={(e) => { pointerType.current = e.pointerType; }}
+      onPointerEnter={(e) => { if (e.pointerType === 'mouse') setWaving(true); }}
+      onPointerLeave={(e) => { if (e.pointerType === 'mouse') setWaving(false); }}
+      onBlur={() => setWaving(false)}
+      onClick={() => { if (pointerType.current !== 'mouse') setWaving(w => !w); pointerType.current = 'mouse'; }}
+    >
+      <motion.img
+        src="/riel-grad.webp"
+        alt="Riel Jake Engaña in USJ-R graduation cap and gown"
+        width={900}
+        height={1405}
+        animate={waving ? { y: -10 } : { y: 0 }}
+        transition={{ type: 'spring', stiffness: 260, damping: 18 }}
+        className="h-full w-auto object-contain object-bottom [filter:drop-shadow(0_0_1.5px_rgb(200_210_255/0.55))_drop-shadow(0_0_28px_rgb(69_96_255/0.55))]"
+        draggable={false}
+      />
+      <AnimatePresence>
+        {waving && (
+          <motion.div
+            key="hi"
+            initial={{ opacity: 0, scale: 0.6, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.7 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 20 }}
+            className="cut-sm absolute top-[8%] right-[6%] md:right-[10%] bg-lime px-4 py-2.5 font-mono text-sm md:text-base font-bold text-void whitespace-nowrap pointer-events-none"
+            role="status"
+          >
+            &gt; Hi, I'm Jake!<span className="caret !bg-void" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// Hero headline typed out letter by letter with a lime caret. Each line reserves its full
+// width (invisible copy underneath) so nothing shifts while it types.
+const HEADLINE = [
+  { text: 'Building', className: 'text-white' },
+  { text: 'Agentic', className: 'text-lime neon-glow' },
+  { text: 'Systems.', className: 'text-white' },
+];
+const HEADLINE_LEN = HEADLINE.reduce((n, l) => n + l.text.length, 0);
+
+const TypedHeadline = () => {
+  const reduceMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const [count, setCount] = useState(reduceMotion ? HEADLINE_LEN : 0);
+
+  useEffect(() => {
+    if (count >= HEADLINE_LEN) return;
+    const t = setTimeout(() => setCount((c) => c + 1), count === 0 ? 500 : 85);
+    return () => clearTimeout(t);
+  }, [count]);
+
+  let start = 0;
+  return (
+    <>
+      <span className="sr-only">{HEADLINE.map((l) => l.text).join(' ')}</span>
+      {HEADLINE.map((line) => {
+        const shown = Math.max(0, Math.min(line.text.length, count - start));
+        const typing = count >= start && count < start + line.text.length + (line === HEADLINE[HEADLINE.length - 1] ? 1 : 0);
+        start += line.text.length;
+        return (
+          <span key={line.text} aria-hidden="true" className={`relative block ${line.className}`}>
+            <span className="invisible">{line.text}</span>
+            <span className="absolute inset-0 whitespace-nowrap">
+              {line.text.slice(0, shown)}
+              {typing && <span className="caret !w-[0.12em] !h-[0.8em] !align-baseline" />}
+            </span>
+          </span>
+        );
+      })}
+    </>
+  );
+};
+
 const Hero = () => {
   const [profileOpen, setProfileOpen] = useState(false);
   const closeProfile = React.useCallback(() => setProfileOpen(false), []);
 
   return (
-  <section id="home" className="relative min-h-screen flex items-center pt-24 pb-12 overflow-hidden px-6 md:px-20 bg-linear-to-b from-jake-cream via-[#FFEAB0] to-[#FFD65C]">
-    <img
-      src="/BG.webp"
-      alt=""
-      aria-hidden="true"
-      className="absolute inset-0 w-full h-full object-cover opacity-25 mix-blend-multiply select-none pointer-events-none"
-      style={{
-        maskImage: 'linear-gradient(to bottom, black 55%, transparent 100%)',
-        WebkitMaskImage: 'linear-gradient(to bottom, black 55%, transparent 100%)'
-      }}
-    />
-    {/* Warm wash behind the headline, clearing toward Jake on the right */}
-    <div className="absolute inset-0 pointer-events-none bg-linear-to-r from-jake-cream/85 via-jake-cream/35 to-transparent" />
+    <section id="home" className="relative overflow-hidden grid-bg pt-24 md:pt-28 pb-16 px-5 md:px-10">
+      <div className="relative max-w-7xl mx-auto grid lg:grid-cols-[1.05fr_0.95fr] gap-10 lg:gap-6 items-stretch">
+        {/* Left: headline */}
+        <motion.div
+          initial={{ opacity: 0, x: -40 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="relative flex flex-col justify-center py-6 lg:py-16"
+        >
+          <svg viewBox="0 0 60 28" className="w-14 h-7 text-lime mb-6" aria-hidden="true">
+            {[8, 22, 36].map((x) => <path key={x} d={`M${x} 26 L${x + 14} 2`} stroke="currentColor" strokeWidth="3.5" strokeLinecap="square" />)}
+          </svg>
+          <Kicker className="mb-4">AI-Augmented Software Developer</Kicker>
+          <h1 className="font-spy font-bold uppercase leading-[0.95] text-[clamp(2.6rem,8vw,6rem)]">
+            <TypedHeadline />
+          </h1>
+          <p className="mt-7 max-w-md text-base md:text-lg leading-relaxed text-mist">
+            I build AI automation, autonomous agents and agentic workflows that are{' '}
+            <strong className="text-lime font-semibold">reliable</strong>,{' '}
+            <strong className="text-lime font-semibold">scalable</strong>, and{' '}
+            <strong className="text-lime font-semibold">production-ready</strong>.
+          </p>
 
-    <div className="relative z-10 grid md:grid-cols-2 gap-12 items-center w-full max-w-7xl mx-auto">
-      <motion.div
-        initial={{ opacity: 0, x: -50 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
-        className="relative z-10"
-      >
-        <span className="inline-flex items-center gap-2 rounded-full bg-jake-hoodie text-jake-fur px-4 py-2 text-sm font-bold tracking-wide shadow-[3px_3px_0_var(--color-jake-wood)]">
-          Hi, I'm Riel Jake Engaña
-        </span>
-        <h1 className="mt-6 text-5xl md:text-7xl lg:text-8xl font-display font-bold leading-[0.9] tracking-tighter text-jake-ink">
-          <DiaTextReveal text="AI" colors={JAKE_SWEEP} textColor="var(--color-jake-wood)" delay={0.2} duration={1.1} startOnView={false} />{' '}
-          <DiaTextReveal text="Augmented," colors={JAKE_SWEEP} textColor="var(--color-jake-ink)" delay={0.45} duration={1.3} startOnView={false} /><br />
-          <DiaTextReveal text="Software" colors={JAKE_SWEEP} textColor="var(--color-jake-fur)" delay={0.85} duration={1.3} startOnView={false} className="jake-shadow" /><br />
-          <DiaTextReveal text="Developer." colors={JAKE_SWEEP} textColor="var(--color-jake-ink)" delay={1.25} duration={1.3} startOnView={false} />
-        </h1>
-        <p className="mt-6 max-w-lg text-lg md:text-xl leading-relaxed text-jake-ink/75 font-medium">
-          Software Developer Intern at Geidi IT, building AI automation, autonomous agents and agentic workflows.
-        </p>
-        <ul className="mt-5 flex flex-wrap gap-2" aria-label="Focus areas">
-          {[
-            { label: "AI Automation", cls: "bg-jake-book-red" },
-            { label: "Agentic Workflows", cls: "bg-jake-book-blue" },
-            { label: "Full-Stack Development", cls: "bg-jake-book-green" }
-          ].map((t) => (
-            <li key={t.label} className={`${t.cls} text-white text-xs md:text-sm font-bold uppercase tracking-wider rounded-md px-3 py-1.5 border-2 border-jake-hoodie shadow-[2px_2px_0_var(--color-jake-hoodie)]`}>
-              {t.label}
-            </li>
-          ))}
-        </ul>
-        <div className="flex flex-wrap items-center gap-6 mt-9">
-          <a href="#contact" className="glitch-btn glitch-btn--jake" data-text="ENQUIRE">ENQUIRE</a>
-          <button type="button" onClick={() => setProfileOpen(true)} className="glitch-btn glitch-btn--jake-alt" data-text="READ PROFILE">READ PROFILE</button>
-        </div>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 1, ease: "easeOut" }}
-        className="relative flex justify-center lg:justify-start"
-      >
-        {/* warm glow under Jake */}
-        <div className="absolute inset-x-[10%] bottom-[6%] h-[30%] rounded-full bg-jake-wood/25 blur-3xl" aria-hidden="true" />
-        <HeroJake />
-      </motion.div>
-    </div>
-
-    {/* Portal to <body> so the modal sits above the fixed navbar; AnimatePresence
-        goes inside the portal (it ignores portal objects as direct children). */}
-    {createPortal(
-      <AnimatePresence>
-        {profileOpen && <ProfileScroll key="profile" onClose={closeProfile} />}
-      </AnimatePresence>,
-      document.body
-    )}
-  </section>
-  );
-};
-
-const ServiceAccordion = () => {
-  const [expanded, setExpanded] = useState<number | null>(1);
-
-  const services = [
-    { id: 0, title: "Branding", desc: "Crafting unique visual identities that resonate with your audience and stand the test of time." },
-    { id: 1, title: "Design", desc: "Efficient, knowledgeable, and smooth experience. Highly recommended for complex UI/UX challenges." },
-    { id: 2, title: "Marketing", desc: "Strategic digital marketing campaigns designed to drive growth and maximize ROI." },
-    { id: 3, title: "Code", desc: "Clean, performant front-end development using the latest modern frameworks and best practices." },
-    { id: 4, title: "Video Editing", desc: "Creating high-quality, engaging videos by cutting, mixing, and adding effects to tell your story." },
-    { id: 5, title: "Agentic Automation", desc: "Building autonomous AI agents and automated workflows that reason, plan, and execute complex tasks independently." }
-  ];
-
-  return (
-    // BMO-themed: body-teal backdrop, screen-cream cards with BMO's line-art
-    // outline and a hard cartoon shadow, D-pad / big-pink-button toggles.
-    <section id="services" className="relative overflow-hidden py-32 px-6 text-bmo-ink">
-      <SectionBackdrop id="services" className="bg-linear-to-b from-bmo to-bmo-shade">
-        {/* Tree Fort scene, dimmed and faded at the edges like the hero background */}
-        <img
-          src="/bmo-bg.webp"
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover opacity-35 select-none"
-          style={{
-            maskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)',
-            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)'
-          }}
-        />
-      </SectionBackdrop>
-      <div className="relative max-w-7xl mx-auto">
-        <div className="flex flex-col lg:flex-row justify-between lg:items-end mb-16 lg:mb-20 gap-8">
-          <h2 className="text-5xl md:text-7xl font-display font-bold tracking-tighter text-bmo-ink">
-            My Specialized<br /><span className="bmo-outline text-bmo-pink">Services.</span>
-          </h2>
-          <div className="flex items-end gap-6">
-            <div className="flex flex-col gap-4 pb-4">
-              {/* BMO's face buttons as a little accent row */}
-              <div className="flex items-center gap-3" aria-hidden="true">
-                <span className="w-6 h-6 bg-bmo-blue border-[3px] border-bmo-ink [clip-path:polygon(50%_0,100%_100%,0_100%)]" />
-                <span className="w-4 h-4 rounded-full bg-bmo-yellow border-[3px] border-bmo-ink" />
-                <span className="w-3 h-3 rounded-full bg-bmo-pink border-2 border-bmo-ink" />
-                <span className="w-10 h-3 rounded-full bg-bmo-slot border-2 border-bmo-ink" />
-              </div>
-              <p className="text-bmo-ink/80 max-w-xs text-lg font-medium">
-                I provide comprehensive design solutions tailored to your business goals.
-              </p>
-            </div>
-            <AnimatedAsset
-              src="/bmo.webp"
-              alt="BMO from Adventure Time sitting and smiling"
-              width={600}
-              height={577}
-              animate={{ y: [0, -10, 0], rotate: [0, -2, 0] }}
-              transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
-              className="w-32 md:w-48 h-auto shrink-0 select-none drop-shadow-[6px_6px_0_rgba(23,4,20,0.25)]"
-              draggable={false}
-            />
+          <div className="mt-10 flex flex-wrap items-center gap-4">
+            <a href="#contact" className="cut-sm group inline-flex items-center gap-4 bg-lime px-7 py-4 font-mono text-xs font-bold uppercase tracking-[0.25em] text-void shadow-[0_0_28px_rgb(212_255_31/0.45)] hover:bg-white hover:shadow-[0_0_36px_rgb(255_255_255/0.4)] transition-all">
+              <Mail size={18} />
+              Contact me
+              <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
+            </a>
+            <button type="button" onClick={() => setProfileOpen(true)} className="cut-sm group inline-flex items-center gap-3 border border-lime/70 bg-lime/5 px-6 py-4 font-mono text-xs font-bold uppercase tracking-[0.25em] text-white hover:bg-lime/15 hover:border-lime transition-colors">
+              <span className="text-lime">&gt;_</span> Read profile
+              <span className="caret !w-[0.5em] !h-[1em]" />
+            </button>
           </div>
-        </div>
 
-        <div className="space-y-5">
-          {services.map((service, idx) => {
-            const isOpen = expanded === service.id;
-            return (
-            <FadeIn
-              key={service.id}
-              delay={idx * 0.1}
-              data-motion-card
-              className={`rounded-[1.75rem] border-4 border-bmo-ink bg-bmo-screen overflow-hidden transition-all duration-300 ${
-                isOpen ? 'shadow-[8px_8px_0_var(--color-bmo-ink)] ' : 'shadow-[5px_5px_0_var(--color-bmo-ink)] hover:shadow-[8px_8px_0_var(--color-bmo-ink)]'
-              }`}
-            >
-              <button
-                onClick={() => setExpanded(isOpen ? null : service.id)}
-                aria-expanded={isOpen}
-                className="w-full p-6 md:px-8 md:py-9 flex justify-between items-center text-left gap-4"
-              >
-                <span className="text-2xl md:text-5xl font-display font-bold tracking-tight text-bmo-ink">
-                  {service.title}
-                </span>
-                <div className={`w-11 h-11 md:w-14 md:h-14 shrink-0 flex items-center justify-center border-[3px] border-bmo-ink text-bmo-ink transition-all duration-300 ${
-                  isOpen ? 'rounded-full bg-bmo-pink shadow-[inset_0_-4px_0_rgba(23,4,20,0.25)]' : 'rounded-xl bg-bmo-yellow shadow-[inset_0_-4px_0_rgba(23,4,20,0.2)]'
-                }`}>
-                  {isOpen ? <Minus strokeWidth={3} /> : <Plus strokeWidth={3} />}
-                </div>
-              </button>
-              <AnimatePresence>
-                {isOpen && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.4, ease: "easeInOut" }}
-                  >
-                    <div className="px-6 pb-6 md:px-8 md:pb-9 max-w-2xl">
-                      {/* BMO's screen slot */}
-                      <span className="block w-20 h-3 mb-4 rounded-full bg-bmo-slot border-2 border-bmo-ink" aria-hidden="true" />
-                      <p className="text-lg md:text-xl text-bmo-slot font-medium leading-relaxed">
-                        {service.desc}
-                      </p>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </FadeIn>
-            );
-          })}
-        </div>
+          {/* sits in the open space under the buttons */}
+          <SpinBadge className="relative mt-10 md:mt-12 ml-6 w-40 h-40 md:w-56 md:h-56 lg:w-64 lg:h-64" />
+        </motion.div>
+
+        {/* Right: the portrait, straight on the page background */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.94 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.9, ease: "easeOut" }}
+          className="relative min-h-[520px] md:min-h-[600px] lg:min-h-[680px]"
+        >
+          {/* sparkles */}
+          <Plus className="absolute top-8 right-16 text-white/70" size={14} aria-hidden="true" />
+          <Plus className="absolute top-16 right-24 text-white/40" size={10} aria-hidden="true" />
+          <Plus className="absolute top-[38%] left-6 text-white/40" size={12} aria-hidden="true" />
+
+          {/* scroll cue on the right edge */}
+          <div className="absolute right-4 top-6 z-20 hidden sm:flex flex-col items-center gap-4" aria-hidden="true">
+            <span className="w-10 h-12 flex items-center justify-center border border-lime/70 text-lime [clip-path:polygon(50%_0,100%_22%,100%_78%,50%_100%,0_78%,0_22%)] bg-void/30">
+              <Asterisk size={18} />
+            </span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.35em] text-white/80 [writing-mode:vertical-rl]">Scroll to discover</span>
+          </div>
+
+          {/* backlight, only behind the portrait: a wide blue glow, then a brighter spot behind the head */}
+          <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-[10%] -translate-x-1/2 w-[90%] max-w-[560px] aspect-square rounded-full bg-[radial-gradient(circle,rgb(69_96_255/0.5)_0%,rgb(30_55_255/0.22)_42%,transparent_70%)] blur-2xl" />
+          <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-[8%] -translate-x-1/2 w-[48%] max-w-[300px] aspect-square rounded-full bg-[radial-gradient(circle,rgb(190_205_255/0.38)_0%,rgb(69_96_255/0.18)_45%,transparent_70%)] blur-xl" />
+          <HeroPhoto />
+
+          {/* bottom fade + name plate */}
+          <div className="absolute inset-x-0 bottom-0 h-40 bg-linear-to-t from-void via-void/70 to-transparent pointer-events-none" aria-hidden="true" />
+          <div className="absolute left-5 right-5 bottom-5 md:left-auto md:right-6 md:bottom-7 z-10 md:text-right pointer-events-none">
+            <p className="font-mono font-bold uppercase tracking-[0.2em] text-lime text-sm md:text-base flex md:justify-end items-center gap-2">
+              Riel Jake Engaña <ChevronsRight size={18} />
+            </p>
+            <p className="mt-1 font-mono text-[10px] md:text-[11px] uppercase tracking-[0.25em] text-white/75">Software Developer Intern · Geidi IT</p>
+          </div>
+        </motion.div>
       </div>
+
+      {createPortal(
+        <AnimatePresence>
+          {profileOpen && <ProfileTerminal key="profile" onClose={closeProfile} />}
+        </AnimatePresence>,
+        document.body
+      )}
     </section>
   );
 };
 
-// Finn-themed: shirt-to-shorts blue backdrop, hat-white outlined quote, a
-// Finn-hat frame (with ears) on the photo, and hat-white stat cards.
-const AboutStats = () => {
-  const onSection = useSectionActive('about');
+// --- Selected work ---
 
-  return (
-  <section id="about" className="py-32 px-6 relative overflow-hidden">
-    <SectionBackdrop id="about" className="bg-linear-to-b from-finn-shirt to-finn-shorts">
-      {/* Finn background scene, dimmed and faded at the edges like the hero background */}
-      <img
-        src="/finn-bg.webp"
-        alt=""
-        className="absolute inset-0 w-full h-full object-cover opacity-35 select-none"
-        style={{
-          maskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)',
-          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)'
-        }}
-      />
-    </SectionBackdrop>
-    <AnimatedAsset
-      src="/finn.webp"
-      alt="Finn the Human jumping with a fist in the air"
-      width={457}
-      height={900}
-      animate={{ y: [0, -18, 0], rotate: [-3, 3, -3] }}
-      transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-      className="relative z-10 block mx-auto w-28 mb-10 xl:absolute xl:left-[2%] xl:top-28 xl:w-44 2xl:w-56 xl:mb-0 h-auto select-none drop-shadow-[8px_8px_0_rgba(17,17,17,0.25)]"
-      draggable={false}
-    />
+// Projects without a `url` are private: no link, shown with a lock.
+const projects: { title: string; category: string; img: string; url?: string }[] = [
+  { title: "Before you Dig Australia", category: "Mining Documentation Automation System", img: "/BYDA.png", url: "https://byda-frontend-268992122217.australia-southeast1.run.app/login" },
+  { title: "Vehicle Management System", category: "Barangay Fleet Management Platform", img: "/VMS.webp" },
+  { title: "PNPh Tourna Website", category: "Tournament Website", img: "/TOUR.png" },
+  { title: "MAAI WebApp Project", category: "SEO AI Agent", img: "/maai.png", url: "https://kriti-maai-790275471938.australia-southeast1.run.app/" },
+  { title: "LostLink WebApp Project", category: "Lost and Found Management", img: "/Web App.png", url: "https://paknaan-lost-link.vercel.app/" },
+  { title: "Wendears Cake", category: "E-Commerce Website", img: "/Wendears.png", url: "https://wendears-cake.vercel.app/" },
+  { title: "Tourmate", category: "AI Travel Companion App", img: "/Tourmate'.png", url: "https://tour-mate-ai-game-agent.vercel.app/" },
+  { title: "COMS.AI", category: "Cebu Outage Monitoring System", img: "/COMS.png", url: "https://coms-ai.vercel.app/" },
+  { title: "PLAYPANDA", category: "Sports & E-Sports Tournament Site", img: "/PLAYPANDA.png" }
+];
 
-    <div className="max-w-4xl mx-auto text-center relative z-10">
-      <motion.h2 
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        className={`finn-outline text-2xl md:text-5xl font-display font-medium leading-tight mb-12 md:mb-20 transition-colors duration-700 ${onSection ? 'text-finn-hat' : 'text-finn-shorts'}`}
-      >
-        "UI/UX designer crafting intuitive, user-friendly experiences through wireframing, prototyping, and visual design."
-      </motion.h2>
+const Work = () => (
+  <section id="work" className="relative scroll-mt-20 py-20 md:py-28 px-5 md:px-10">
+    <div className="max-w-7xl mx-auto">
+      <SectionHead top="Selected" bottom="Work" blurb={`${projects.length} builds where automation meets craft, from AI agents and monitoring systems to websites and e-commerce.`} />
 
-      <div className="flex justify-center mb-20">
-        <div className="relative group pt-5">
-          {/* Finn's hat ears */}
-          <span className="absolute top-0 left-[18%] w-8 h-8 md:w-11 md:h-11 rounded-t-full rounded-b-md bg-finn-hat border-4 border-finn-ink" aria-hidden="true" />
-          <span className="absolute top-0 right-[18%] w-8 h-8 md:w-11 md:h-11 rounded-t-full rounded-b-md bg-finn-hat border-4 border-finn-ink" aria-hidden="true" />
-          <div className="relative w-32 h-32 md:w-48 md:h-48 rounded-full overflow-hidden border-[10px] border-finn-hat ring-4 ring-finn-ink shadow-[8px_8px_0_rgba(17,17,17,0.35)] cursor-pointer hover:scale-105 transition-transform duration-500">
-            <img 
-              src="/699273422_1702802617512994_1962015335284207172_n.jpg" 
-              alt="Designer Profile" 
-              className="w-full h-full object-cover"
-              referrerPolicy="no-referrer"
-            />
-          </div>
-        </div>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {projects.map((project, i) => {
+          const isPrivate = !project.url;
+          return (
+            <FadeIn key={project.title} delay={(i % 3) * 0.08}>
+              <a
+                href={project.url}
+                target={isPrivate ? undefined : '_blank'}
+                rel={isPrivate ? undefined : 'noopener noreferrer'}
+                aria-label={isPrivate ? `${project.title} (private project)` : `Open ${project.title} in a new tab`}
+                className={`brackets group flex h-full flex-col border border-electric-soft/25 bg-navy/70 p-5 transition-colors hover:border-electric-soft/60 hover:bg-panel/80 ${isPrivate ? 'cursor-default' : ''}`}
+              >
+                <span className="font-mono text-xs text-mist">{String(i + 1).padStart(2, '0')}</span>
+                <h3 className="mt-2 font-display font-bold uppercase tracking-wide text-lg md:text-xl text-white leading-tight">{project.title}</h3>
+                <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.15em] text-mist/80">{project.category}</p>
+                <div className="relative mt-5 aspect-[16/10] overflow-hidden border border-electric-soft/20 bg-void">
+                  <img
+                    src={project.img}
+                    alt={project.title}
+                    loading="lazy"
+                    className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-linear-to-t from-electric/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+                <div className="mt-5 flex items-center justify-between">
+                  {isPrivate ? (
+                    <span className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-mist/70"><Lock size={13} /> Private build</span>
+                  ) : (
+                    <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-mist border-b border-mist/40 pb-0.5 group-hover:text-lime group-hover:border-lime transition-colors">View live project</span>
+                  )}
+                  <span className="w-8 h-8 border border-lime/70 text-lime flex items-center justify-center transition-colors group-hover:bg-lime group-hover:text-void">
+                    {isPrivate ? <Lock size={14} /> : <Plus size={16} className="transition-transform duration-300 group-hover:rotate-90" />}
+                  </span>
+                </div>
+              </a>
+            </FadeIn>
+          );
+        })}
       </div>
+    </div>
+  </section>
+);
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-5 md:gap-6">
-        {[
-          { label: "Years of Experience", value: 5, minIntegerDigits: 2 },
-          { label: "Projects Completed", value: 50, suffix: "+" },
-          { label: "Client Rating", value: 4.5, decimalPlaces: 2 },
-          { label: "Design Awards", value: 17 }
-        ].map((stat, i) => (
-          <FadeIn key={i} delay={i * 0.1} className="motion-stat flex flex-col items-center rounded-3xl bg-finn-hat border-4 border-finn-ink shadow-[6px_6px_0_var(--color-finn-ink)] px-3 pt-6 pb-5 overflow-hidden">
-            <span className="text-4xl md:text-6xl font-display font-bold mb-2 text-finn-shorts">
-              <NumberTicker value={stat.value} decimalPlaces={stat.decimalPlaces} minIntegerDigits={stat.minIntegerDigits} delay={0.15 + i * 0.12} />
-              {stat.suffix}
-            </span>
-            <span className="text-xs font-bold uppercase tracking-widest text-finn-ink/60">{stat.label}</span>
-            {/* backpack-green strip */}
-            <span className="mt-4 h-2 w-12 rounded-full bg-finn-pack border-2 border-finn-ink" aria-hidden="true" />
+// --- Stats band ---
+
+const stats = [
+  { label: "Years of experience", value: 5, minIntegerDigits: 2, Icon: CalendarDays },
+  { label: "Projects completed", value: 50, suffix: "+", Icon: Rocket },
+  { label: "Client rating", value: 4.5, decimalPlaces: 1, Icon: Star },
+  { label: "Design awards", value: 17, Icon: Trophy }
+];
+
+const StatsBand = () => (
+  <section className="px-5 md:px-10 pb-20 md:pb-28">
+    <div className="max-w-7xl mx-auto grid lg:grid-cols-[1fr_340px] gap-5">
+      <FadeIn className="cut relative overflow-hidden bg-linear-to-br from-electric/45 via-panel to-navy border border-electric-soft/30">
+        <div className="absolute inset-0 grid-bg opacity-50" aria-hidden="true" />
+        <div className="relative grid grid-cols-2 md:grid-cols-4">
+          {stats.map((s, i) => (
+            <div key={s.label} className={`flex flex-col items-center text-center px-4 py-10 md:py-12 ${i % 2 === 1 ? 'border-l' : ''} ${i >= 2 ? 'border-t md:border-t-0' : ''} md:border-l md:first:border-l-0 border-electric-soft/25`}>
+              <s.Icon className="text-white/85 mb-5" size={34} strokeWidth={1.25} />
+              <span className="font-display font-black text-5xl md:text-6xl text-lime neon-glow">
+                <NumberTicker value={s.value} decimalPlaces={s.decimalPlaces} minIntegerDigits={s.minIntegerDigits} delay={0.15 + i * 0.12} />
+                {s.suffix}
+              </span>
+              <span className="mt-3 font-mono text-[11px] uppercase tracking-[0.2em] text-mist">{s.label}</span>
+            </div>
+          ))}
+        </div>
+      </FadeIn>
+
+      <FadeIn delay={0.1} className="cut relative overflow-hidden bg-lime text-void p-8 flex flex-col justify-between min-h-[240px]">
+        <svg viewBox="0 0 200 60" className="absolute -top-2 left-0 w-full opacity-25" aria-hidden="true">
+          {[0, 1, 2, 3, 4].map((i) => <ellipse key={i} cx="100" cy="30" rx={95 - i * 18} ry={22 - i * 4} fill="none" stroke="currentColor" strokeWidth="0.8" />)}
+        </svg>
+        <p className="relative mt-8 font-mono font-bold uppercase leading-relaxed tracking-wide text-sm md:text-base">
+          "Systems that<br />reason, plan<br />and execute."
+        </p>
+        <div className="relative mt-6 flex gap-1.5" aria-hidden="true">
+          {Array.from({ length: 14 }).map((_, i) => <span key={i} className="h-2.5 w-3 bg-void -skew-x-[30deg]" style={{ opacity: i > 9 ? 0.25 : 1 }} />)}
+        </div>
+      </FadeIn>
+    </div>
+  </section>
+);
+
+// --- Services ---
+
+const services = [
+  { title: "Agentic Automation", Icon: Bot, desc: "Building autonomous AI agents and automated workflows that reason, plan, and execute complex tasks independently." },
+  { title: "Code", Icon: Code2, desc: "Clean, performant front-end development using the latest modern frameworks and best practices." },
+  { title: "Design", Icon: PenTool, desc: "Efficient, knowledgeable, and smooth experience. Highly recommended for complex UI/UX challenges." },
+  { title: "Branding", Icon: Palette, desc: "Crafting unique visual identities that resonate with your audience and stand the test of time." },
+  { title: "Marketing", Icon: Megaphone, desc: "Strategic digital marketing campaigns designed to drive growth and maximize ROI." },
+  { title: "Video Editing", Icon: Clapperboard, desc: "Creating high-quality, engaging videos by cutting, mixing, and adding effects to tell your story." }
+];
+
+const Services = () => (
+  <section id="services" className="relative scroll-mt-20 py-20 md:py-28 px-5 md:px-10 grid-bg">
+    <div className="max-w-7xl mx-auto">
+      <SectionHead top="What" bottom="I do" blurb="Design and engineering under one roof, with AI automation at the core." />
+      <div className="grid gap-px bg-electric-soft/20 border border-electric-soft/20 sm:grid-cols-2 lg:grid-cols-3">
+        {services.map((s, i) => (
+          <FadeIn key={s.title} delay={(i % 3) * 0.08} className="h-full">
+            <div className="group h-full bg-void p-7 md:p-8 transition-colors hover:bg-navy">
+              <div className="flex items-start justify-between">
+                <span className="w-12 h-12 flex items-center justify-center border border-electric-soft/40 text-white transition-colors group-hover:border-lime group-hover:text-lime">
+                  <s.Icon size={22} strokeWidth={1.5} />
+                </span>
+                <span className="font-mono text-xs text-mist/60">/{String(i + 1).padStart(2, '0')}</span>
+              </div>
+              <h3 className="mt-6 font-display font-bold uppercase tracking-wide text-xl text-white group-hover:text-lime transition-colors">{s.title}</h3>
+              <p className="mt-3 text-sm leading-relaxed text-mist">{s.desc}</p>
+            </div>
           </FadeIn>
         ))}
       </div>
     </div>
   </section>
-  );
-};
+);
 
-const JourneyTimeline = () => {
-  const journey = [
-    {
-      year: "2022",
-      title: "Started as a student builder",
-      body: "I began turning curiosity into real output: websites, graphic design work, and small systems that trained my eye for details and delivery at AMA ACLC College of Mandaue.",
-      image: "/GRAP.jpg"
-    },
-    {
-      year: "2023",
-      title: "Graduated at AMA ",
-      body: "Afterall, I Graduate at AMA ACLC College of Mandaue as Visual Graphic Design and Animation, but instead of continue to work, I continue my studies;",
-      image: "/CERTS.jpg"
-    },
-    {
-      year: "2024",
-      title: "Joined PNPh",
-      body: "I joined PNPh become their student scholar, Taking 2.5yrs of professional training at USJR. While focusing to study Software Development as an Associate of Computer Technology.",
-      image: "/PN.png"
-    },
-    {
-      year: "2025",
-      title: "Prepared for the workplace",
-      body: "I sharpened my portfolio, practiced professional communication, and kept delivering freelance and school projects with stronger standards.",
-      image: "/JP.jpg"
-    },
-    {
-      year: "2026",
-      title: "From student to work",
-      body: "Now I am growing as an Software Developer Intern at Geidi IT, building AI automation, agentic workflows, and production-minded tools.",
-      image: "/GEIDI.jpg"
-    }
-  ];
-  const [activeIndex, setActiveIndex] = useState(journey.length - 1);
-  const active = journey[activeIndex];
-  const goToPrevious = () => setActiveIndex((activeIndex - 1 + journey.length) % journey.length);
-  const goToNext = () => setActiveIndex((activeIndex + 1) % journey.length);
-  // Section fades to black (and switches its dark: styles on) while it's on screen.
-  // Marceline-themed while current: night sky from her hair, pale-cyan skin
-  // lettering, red accents. `dark` also switches on the section's dark: styles.
-  const onSection = useSectionActive('journey');
+// --- Journey + education ---
+
+const journey = [
+  { year: "2022", title: "Started as a student builder", body: "I began turning curiosity into real output: websites, graphic design work, and small systems that trained my eye for details and delivery at AMA ACLC College of Mandaue.", image: "/GRAP.jpg" },
+  { year: "2023", title: "Graduated at AMA", body: "Afterall, I Graduate at AMA ACLC College of Mandaue as Visual Graphic Design and Animation, but instead of continue to work, I continue my studies;", image: "/CERTS.jpg" },
+  { year: "2024", title: "Joined PNPh", body: "I joined PNPh become their student scholar, Taking 2.5yrs of professional training at USJR. While focusing to study Software Development as an Associate of Computer Technology.", image: "/PN.png" },
+  { year: "2025", title: "Prepared for the workplace", body: "I sharpened my portfolio, practiced professional communication, and kept delivering freelance and school projects with stronger standards.", image: "/JP.jpg" },
+  { year: "2026", title: "From student to work", body: "Now I am growing as an Software Developer Intern at Geidi IT, building AI automation, agentic workflows, and production-minded tools.", image: "/GEIDI.jpg" }
+];
+
+const education = [
+  { years: "2016 – 2021", title: "Junior High School", institution: "Junior High School Science Class", body: "Completed junior high school under the Science curriculum, building the academic foundation before pursuing a technical and creative track in senior high.", link: "https://www.youtube.com/channel/UCSZq2Jfqy8chv6jnsC1E0NA", logo: "/PaknaanNHS-logo.png" },
+  { years: "2022 – 2024", title: "Senior High School", institution: "ACLC College of Mandaue", body: "TVL strand, Major in Visual Graphic Design and Animation — where I first started applying design and technical skills to real projects.", link: "https://www.facebook.com/ACLCCMandaueRegistrar/", logo: "/ACLC-logo.png" },
+  { years: "2024 – Present", title: "College", institution: "University of San Jose–Recoletos", body: "Associate in Computer Technology, Major in Software Development — currently completing my degree while working as a Software Developer Intern.", link: "https://en.wikipedia.org/wiki/University_of_San_Jose%E2%80%93Recoletos", logo: "/USJR-logo.png" }
+];
+
+const Journey = () => {
+  const [active, setActive] = useState(journey.length - 1);
+  const item = journey[active];
 
   return (
-    <section
-      id="journey"
-      className={`relative scroll-mt-24 py-32 px-6 overflow-hidden transition-colors duration-700 ${onSection ? 'dark text-marcy-skin' : ''}`}
-    >
-      <SectionBackdrop id="journey" className="bg-linear-to-b from-marcy-hair via-[#15123A] to-marcy-jeans/80">
-        {/* Marceline background scene, dimmed and faded at the edges like the hero background */}
-        <img
-          src="/marceline-bg.webp"
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover opacity-35 select-none"
-          style={{
-            maskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)',
-            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)'
-          }}
-        />
-      </SectionBackdrop>
-      <AnimatedAsset
-        src="/marceline.webp"
-        alt="Marceline the Vampire Queen floating and playing her bass"
-        width={700}
-        height={707}
-        initial={false}
-        animate={onSection ? { opacity: 1, x: 0, y: [0, -14, 0] } : { opacity: 0, x: 40, y: 0 }}
-        transition={onSection ? { opacity: { duration: 0.7 }, x: { duration: 0.7 }, y: { duration: 4, repeat: Infinity, ease: "easeInOut" } } : { duration: 0.4 }}
-        className="relative z-10 block mx-auto w-40 sm:w-52 mb-10 xl:absolute xl:right-[3%] xl:bottom-16 xl:w-72 2xl:w-80 xl:mb-0 h-auto pointer-events-none select-none drop-shadow-[0_0_30px_rgba(195,236,238,0.25)]"
-        draggable={false}
-      />
-      <div className="relative max-w-7xl mx-auto">
-        <FadeIn>
-          <div className="mb-16 md:mb-24">
-            <p className="text-sm font-bold uppercase tracking-widest text-accent-start dark:text-marcy-skin/70 transition-colors mb-4">Philippines</p>
-            <div className="grid md:grid-cols-[0.9fr_1.1fr] gap-8 md:gap-16 items-end">
-              <h2 className={`text-5xl md:text-7xl font-display font-bold tracking-tighter ${onSection ? 'text-marcy-skin' : 'title-text'}`}>
-                Tech Journey<br />the years.
-              </h2>
-              <p className="text-lg md:text-xl text-ink/65 dark:text-slate-300 leading-relaxed max-w-2xl">
-              My journey as a student, builder, and young professional - from learning the craft to applying it at work.
-              </p>
-            </div>
-          </div>
-        </FadeIn>
+    <section id="journey" className="relative scroll-mt-20 py-20 md:py-28 px-5 md:px-10">
+      <div className="max-w-7xl mx-auto">
+        <SectionHead top="Journey" bottom="Log" blurb="From student builder to software developer intern, plus the schools that got me here." />
 
-        <div className="relative">
-          <div className="hidden md:block absolute left-16 right-16 top-[7.35rem] border-t-2 border-dashed border-black/25 dark:border-white/25" />
-
-          <div className="flex items-center justify-between gap-2 md:gap-4 mb-10 pr-14 md:pr-0">
-            <button
-              type="button"
-              onClick={goToPrevious}
-              className="relative z-10 w-10 h-10 md:w-12 md:h-12 rounded-full border border-black/20 dark:border-white/20 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md flex items-center justify-center hover:border-accent-start hover:text-accent-start transition-colors"
-              aria-label="Previous journey milestone"
-            >
-              <ChevronLeft size={22} />
-            </button>
-
-            <div className="relative z-10 flex-1 grid grid-cols-5 gap-1 md:gap-6">
-              {journey.map((item, index) => (
-                <button
-                  key={item.year}
-                  type="button"
-                  onClick={() => setActiveIndex(index)}
-                  className={`group flex flex-col items-center gap-3 transition-opacity ${index === activeIndex ? 'opacity-100' : 'opacity-45 hover:opacity-80'}`}
-                  aria-label={`Show ${item.year} journey milestone`}
-                >
-                  <span className={`text-sm md:text-4xl font-display font-bold transition-colors ${index === activeIndex ? (onSection ? 'text-marcy-skin' : 'title-text') : 'text-title/50 dark:text-marcy-skin/35'}`}>
-                    {item.year}
-                  </span>
-                  <span className={`w-5 h-5 rounded-full border-4 transition-colors ${index === activeIndex ? 'bg-accent-start border-white shadow-lg shadow-accent-start/30 dark:bg-marcy-red dark:border-marcy-hair dark:shadow-marcy-red/40' : 'bg-white border-accent-start/70 dark:bg-marcy-hair dark:border-marcy-red/60'}`} />
-                </button>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              onClick={goToNext}
-              className="relative z-10 w-10 h-10 md:w-12 md:h-12 rounded-full border border-black/20 dark:border-white/20 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md flex items-center justify-center hover:border-accent-start hover:text-accent-start transition-colors"
-              aria-label="Next journey milestone"
-            >
-              <ChevronRight size={22} />
-            </button>
-          </div>
-
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={active.year}
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -24 }}
-              transition={{ duration: 0.45, ease: [0.21, 0.47, 0.32, 0.98] }}
-              className="grid md:grid-cols-[0.9fr_1.1fr] gap-10 md:gap-16 items-center"
-            >
-              <div className="md:text-right">
-                <p className="text-sm font-bold uppercase tracking-widest text-accent-start dark:text-marcy-skin/70 mb-3">My journey</p>
-                <h3 className={`text-3xl md:text-5xl font-display font-bold tracking-tight mb-5 ${onSection ? 'text-marcy-skin' : 'title-text'}`}>{active.title}</h3>
-                <p className="text-lg text-ink/65 dark:text-slate-300 leading-relaxed md:ml-auto max-w-xl">
-                  {active.body}
-                </p>
-              </div>
-
-              <div className="relative flex justify-center md:justify-start">
-                <div className="absolute top-1/2 left-1/2 md:left-28 -translate-x-1/2 -translate-y-1/2 w-64 h-64 md:w-80 md:h-80 rounded-full bg-accent-start/10 dark:bg-marcy-red/25 blur-3xl" />
-                <div className="relative w-64 h-64 md:w-80 md:h-80 rounded-full overflow-hidden border-8 border-white/80 dark:border-marcy-red shadow-2xl bg-white/40 dark:bg-slate-900/40">
-                  <img
-                    src={active.image}
-                    alt={`${active.year} ${active.title}`}
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                </div>
-              </div>
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      </div>
-    </section>
-  );
-};
-
-const Education = () => {
-  const education = [
-    {
-      years: "2016 – 2021",
-      title: "Junior High School",
-      institution: "Junior High School Science Class",
-      body: "Completed junior high school under the Science curriculum, building the academic foundation before pursuing a technical and creative track in senior high.",
-      link: "https://www.youtube.com/channel/UCSZq2Jfqy8chv6jnsC1E0NA",
-      logo: "/PaknaanNHS-logo.png"
-    },
-    {
-      years: "2022 – 2024",
-      title: "Senior High School",
-      institution: "ACLC College of Mandaue",
-      body: "TVL strand, Major in Visual Graphic Design and Animation — where I first started applying design and technical skills to real projects.",
-      link: "https://www.facebook.com/ACLCCMandaueRegistrar/",
-      logo: "/ACLC-logo.png"
-    },
-    {
-      years: "2024 – Present",
-      title: "College",
-      institution: "University of San Jose–Recoletos",
-      body: "Associate in Computer Technology, Major in Software Development — currently completing my degree while working as a Software Developer Intern.",
-      link: "https://en.wikipedia.org/wiki/University_of_San_Jose%E2%80%93Recoletos",
-      logo: "/USJR-logo.png"
-    }
-  ];
-  const [activeIndex, setActiveIndex] = useState(education.length - 1);
-  const active = education[activeIndex];
-  // Gunter-themed while current: cream belly backdrop, navy lettering, and the
-  // active school shown as a black graduation-gown card with gold trim (gunter: styles).
-  const onSection = useSectionActive('education');
-
-  return (
-    <section
-      id="education"
-      className={`relative overflow-hidden scroll-mt-24 py-32 px-6 transition-colors duration-700 ${onSection ? 'gunter bg-gunter-belly' : 'bg-transparent'}`}
-    >
-      <SectionBackdrop id="education">
-        {/* Snowy mountain scene, dimmed and faded at the edges like the hero background */}
-        <img
-          src="/gunter-bg.webp"
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover opacity-35 select-none"
-          style={{
-            maskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)',
-            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)'
-          }}
-        />
-      </SectionBackdrop>
-      <div className="relative max-w-7xl mx-auto">
-        <FadeIn>
-          <div className="mb-16 md:mb-24 flex items-end justify-between gap-6">
-            <div>
-              <p className="text-sm font-bold uppercase tracking-widest text-accent-start gunter:text-gunter-navy transition-colors mb-4">Background</p>
-              <h2 className={`text-5xl md:text-7xl font-display font-bold tracking-tighter ${onSection ? 'text-gunter-navy' : 'title-text'}`}>
-                Education.
-              </h2>
-            </div>
-            {/* Gunter, graduated — gold trim matches the section's Jake-yellow */}
-            <AnimatedAsset
-              src="/gunter.webp"
-              alt="Gunter the penguin in a graduation cap and gown"
-              width={626}
-              height={700}
-              animate={{ rotate: [0, -4, 0, 4, 0], y: [0, -6, 0] }}
-              transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}
-              className="w-28 md:w-44 h-auto shrink-0 select-none origin-bottom drop-shadow-[6px_6px_0_rgba(17,17,17,0.2)]"
-              draggable={false}
-            />
-          </div>
-        </FadeIn>
-
-        <div className="relative">
-          <div className="hidden md:block absolute left-0 right-0 top-6 border-t-2 border-dashed border-black/25 gunter:border-gunter-navy/30" />
-
-          <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-6 mb-14">
-            {education.map((item, index) => (
+        {/* Year selector */}
+        <div className="relative mb-10">
+          <div className="absolute left-0 right-0 top-1/2 h-px bg-electric-soft/30" aria-hidden="true" />
+          <div className="relative grid grid-cols-5 gap-2">
+            {journey.map((j, i) => (
               <button
-                key={item.years}
+                key={j.year}
                 type="button"
-                onClick={() => setActiveIndex(index)}
-                className={`group flex flex-col items-center text-center gap-3 transition-opacity ${index === activeIndex ? 'opacity-100' : 'opacity-45 hover:opacity-80'}`}
-                aria-label={`Show ${item.years} education milestone`}
+                onClick={() => setActive(i)}
+                aria-pressed={i === active}
+                className={`cut-sm mx-auto px-3 md:px-6 py-2 md:py-3 font-display font-bold text-sm md:text-2xl transition-colors ${i === active ? 'bg-lime text-void' : 'bg-void border border-electric-soft/40 text-mist hover:text-white hover:border-white/60'}`}
               >
-                <span className={`w-10 h-10 md:w-12 md:h-12 rounded-full overflow-hidden bg-white p-1.5 border-4 transition-colors ${index === activeIndex ? 'border-accent-start shadow-lg shadow-accent-start/30 gunter:border-gunter-gold gunter:shadow-gunter-gold/40' : 'border-black/10 dark:border-white/20'}`}>
-                  <img src={item.logo} alt={`${item.institution} logo`} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-                </span>
-                <span className={`text-sm md:text-base font-bold uppercase tracking-widest transition-colors ${index === activeIndex ? 'text-ink gunter:text-gunter-navy' : 'text-ink/50 gunter:text-gunter-navy/50'}`}>
-                  {item.years}
-                </span>
+                {j.year}
               </button>
             ))}
           </div>
+        </div>
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={active.years}
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -24 }}
-              transition={{ duration: 0.45, ease: [0.21, 0.47, 0.32, 0.98] }}
-              // Padding/border are constant so the section's height never changes when the
-              // theme switches (it used to grow ~166px and make anchor scrolls overshoot).
-              className={`text-center max-w-2xl mx-auto rounded-[2rem] border-4 p-8 md:p-12 transition-colors duration-500 ${onSection ? 'bg-gunter-gown border-gunter-gold text-gunter-belly shadow-[8px_8px_0_var(--color-gunter-navy)]' : 'bg-transparent border-transparent'}`}
-            >
-              <div className="w-20 h-20 md:w-24 md:h-24 mx-auto mb-6 rounded-full bg-white p-3 shadow-xl border border-black/5">
-                <img src={active.logo} alt={`${active.institution} logo`} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-              </div>
-              <p className="text-sm font-bold uppercase tracking-widest text-accent-start gunter:text-gunter-gold transition-colors mb-3">{active.title}</p>
-              <h3 className={`text-3xl md:text-5xl font-display font-bold tracking-tight mb-5 ${onSection ? 'text-gunter-belly' : 'title-text'}`}>{active.institution}</h3>
-              <p className="text-lg text-ink/65 gunter:text-gunter-belly/80 leading-relaxed mb-6">{active.body}</p>
-              <a
-                href={active.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 font-bold uppercase tracking-widest text-sm hover:text-accent-start gunter:text-gunter-gold gunter:hover:text-gunter-belly transition-colors"
-              >
-                Visit <ArrowUpRight size={18} />
-              </a>
-            </motion.div>
-          </AnimatePresence>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={item.year}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.4, ease: [0.21, 0.47, 0.32, 0.98] }}
+            className="brackets grid md:grid-cols-[0.9fr_1.1fr] border border-electric-soft/25 bg-navy/70"
+          >
+            <div className="relative aspect-[4/3] md:aspect-auto md:min-h-[340px] overflow-hidden bg-void">
+              <img src={item.image} alt={`${item.year}: ${item.title}`} className="absolute inset-0 w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-linear-to-tr from-electric/40 via-transparent to-transparent mix-blend-screen" />
+            </div>
+            <div className="p-7 md:p-10 flex flex-col justify-center">
+              <Kicker className="text-lime">{item.year} · Milestone {String(active + 1).padStart(2, '0')}</Kicker>
+              <h3 className="mt-3 font-display font-bold uppercase tracking-wide text-2xl md:text-4xl text-white">{item.title}</h3>
+              <p className="mt-4 text-base md:text-lg leading-relaxed text-mist">{item.body}</p>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Education */}
+        <div id="education" className="scroll-mt-24 mt-16">
+          <Kicker className="mb-5 flex items-center gap-3"><span className="h-px w-10 bg-lime" />Education</Kicker>
+          <div className="grid gap-5 md:grid-cols-3">
+            {education.map((e, i) => (
+              <FadeIn key={e.years} delay={i * 0.08} className="h-full">
+                <div className="cut h-full flex flex-col bg-panel/60 border border-electric-soft/25 p-6">
+                  <div className="flex items-center gap-4">
+                    <span className="w-14 h-14 shrink-0 rounded-full bg-white p-2 ring-2 ring-electric-soft/50">
+                      <img src={e.logo} alt={`${e.institution} logo`} className="w-full h-full object-contain" />
+                    </span>
+                    <div>
+                      <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-lime">{e.years}</p>
+                      <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-mist">{e.title}</p>
+                    </div>
+                  </div>
+                  <h3 className="mt-5 font-display font-bold uppercase tracking-wide text-lg text-white">{e.institution}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-mist flex-1">{e.body}</p>
+                  <a href={e.link} target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex items-center gap-2 self-start font-mono text-[11px] uppercase tracking-[0.2em] text-white hover:text-lime transition-colors">
+                    Visit <ArrowUpRight size={14} />
+                  </a>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
         </div>
       </div>
     </section>
   );
 };
 
-// Scroll-expand intro that sits just before the Portfolio section: the photo
-// grows from a framed card to full screen as you scroll, then hands off.
-const PortfolioIntro = () => (
-  <ScrollExpand
-    useWindowScroll
-    src="/things-built.webp"
-    alt="The Adventure Time cast celebrating across the Land of Ooo"
-    title="Things I've Built"
-    scrollHint="Scroll to open the portfolio"
-    startWidth={46}
-    startHeight={56}
-    startRadius={32}
-    mediaZoom={1.3}
-    scrollDistance={1.1}
-    holdDistance={0.3}
-    overlayScrim={0.55}
-    className="font-display"
-  >
-    <p className="font-sans text-xs md:text-sm font-bold uppercase tracking-[0.3em] text-pb-skin bg-pb-ink/75 backdrop-blur-sm rounded-full px-5 py-2 mb-5">Selected work</p>
-    <h2 className="pb-outline text-5xl md:text-8xl font-bold tracking-tighter text-white">
-      Latest <span className="text-pb-pink">Portfolio.</span>
-    </h2>
-  </ScrollExpand>
+// --- Experience ---
+
+type ExpKind = 'Work' | 'Freelance' | 'OJT';
+const experiences: { org: string; role: string; period: string; kind: ExpKind; Icon: typeof Code2; points: string[]; tags: string[] }[] = [
+  {
+    org: 'Geidi IT Services', role: 'Software Developer Intern', period: '2026 – Present', kind: 'Work', Icon: Bot,
+    points: [
+      'Builds and deploys production-ready AI-augmented and agentic systems',
+      'Works on AI automation, autonomous agents, and multi-agent workflows',
+      'Uses LLM orchestration and end-to-end process automation to ship scalable tools',
+    ],
+    tags: ['AI Automation', 'Agentic Workflows', 'LLM Orchestration'],
+  },
+  {
+    org: 'Upwork & LinkedIn', role: 'Freelance Web & UI/UX Designer', period: '2024 – 2026', kind: 'Freelance', Icon: Globe,
+    points: [
+      'Designed responsive websites for international clients',
+      'Created UI/UX prototypes in Figma',
+      'Delivered branding, graphic design, and digital marketing assets',
+    ],
+    tags: ['Web Design', 'Figma', 'Branding'],
+  },
+  {
+    org: 'Mandaue City Hall', role: "Job Order Documentator · PIO, Mayor's Office", period: '2023 – 2024', kind: 'Work', Icon: Camera,
+    points: [
+      'Documented city events and programmes as a job-order documentator',
+      "Served as Public Information Officer in the Mayor's Office",
+    ],
+    tags: ['Documentation', 'Photography', 'Public Information'],
+  },
+  {
+    org: 'HighLight Studio', role: 'Editor · Photographer · Encoder', period: '2023 – 2024', kind: 'Work', Icon: Film,
+    points: [
+      'Edited photos and videos and handled studio photography',
+      'Encoded and prepared client projects',
+      'Provided technical maintenance and system updates, and helped improve website performance',
+    ],
+    tags: ['Video Editing', 'Photography', 'Maintenance'],
+  },
+  {
+    org: 'SunStar Cebu', role: 'Photojournalist · Editorial Cartoonist', period: '2023', kind: 'Work', Icon: PenTool,
+    points: ['Covered stories as a photojournalist', 'Drew editorial cartoons for the paper'],
+    tags: ['Photojournalism', 'Illustration'],
+  },
+  {
+    org: 'EJ Cortes · Brgy. Paknaan Councilor', role: 'Videographer · Photographer · Editor', period: 'Paknaan, Mandaue', kind: 'Work', Icon: Camera,
+    points: ["Shot and edited photo and video coverage for the councilor's office"],
+    tags: ['Videography', 'Photography', 'Editing'],
+  },
+  {
+    org: 'Scarlett Digital Printing & Services', role: 'Creative Intern / OJT · Tarpaulin Operator', period: '2022 – 2023', kind: 'OJT', Icon: Printer,
+    points: [
+      'Completed Senior High School on-the-job training as a tarpaulin operator',
+      'Earned NC II certification in UI/UX Design and Visual Graphics',
+      'Created UI prototypes with Figma and Adobe tools',
+    ],
+    tags: ['Printing', 'Figma', 'Adobe'],
+  },
+  {
+    org: 'Bisdak influencers', role: 'Video Editor', period: '2022', kind: 'Freelance', Icon: Clapperboard,
+    points: ['Edited videos for Cebuano creators such as Joseph Sabello, Patrick and Abby, and Jayat during the pandemic'],
+    tags: ['Video Editing', 'Content Creation'],
+  },
+  {
+    org: 'Amazon Kindle & Etsy', role: 'Digital Products Seller', period: 'Ongoing', kind: 'Freelance', Icon: ShoppingBag,
+    points: ['Designs and sells digital products worldwide on Amazon Kindle', 'Sells digital products to Philippine buyers on Etsy'],
+    tags: ['E-commerce', 'Digital Products'],
+  },
+];
+const EXP_FILTERS = ['All', 'Work', 'Freelance', 'OJT'] as const;
+
+const ExperienceDetail = ({ exp, index }: { exp: typeof experiences[number], index: number }) => (
+  <div>
+    <div className="flex items-start justify-between gap-4">
+      <span className="w-14 h-14 shrink-0 flex items-center justify-center border border-lime/60 bg-lime/10 text-lime shadow-[0_0_24px_rgb(212_255_31/0.2)]">
+        <exp.Icon size={26} strokeWidth={1.5} />
+      </span>
+      <div className="text-right">
+        <span className="inline-block border border-lime/60 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-lime">{exp.kind}</span>
+        <p className="mt-2 font-mono text-[11px] text-mist">{String(index + 1).padStart(2, '0')} / {String(experiences.length).padStart(2, '0')}</p>
+      </div>
+    </div>
+    <p className="mt-6 font-mono text-xs uppercase tracking-[0.2em] text-lime">{exp.period}</p>
+    <h3 className="mt-2 font-display font-bold uppercase tracking-wide text-2xl md:text-3xl text-white leading-tight">{exp.role}</h3>
+    <p className="mt-1 text-mist">{exp.org}</p>
+    <ul className="mt-6 space-y-3">
+      {exp.points.map((pt, i) => (
+        <motion.li key={pt} className="flex gap-3 text-white/85 leading-relaxed" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 + i * 0.08 }}>
+          <span className="text-lime shrink-0">▸</span>{pt}
+        </motion.li>
+      ))}
+    </ul>
+    <div className="mt-6 flex flex-wrap gap-2">
+      {exp.tags.map((t) => <span key={t} className="border border-electric-soft/40 bg-electric/15 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-white/85">{t}</span>)}
+    </div>
+  </div>
 );
 
-// Princess Bubblegum-themed while current: candy-pink lab backdrop, magenta
-// lettering, and a bento grid — one featured project plus the supporting ones.
-const Portfolio = () => {
-  // Projects without a `url` are private: no link, shown with a "Private Project" badge.
-  const projects: { title: string; category: string; img: string; url?: string }[] = [
-    { title: "Before you Dig Australia", category: "Mining Documentation Automation System", img: "/BYDA.png", url: "https://byda-frontend-268992122217.australia-southeast1.run.app/login" },
-    { title: "PNPh Tourna Website", category: "Tournament Website", img: "/TOUR.png" },
-    { title: "MAAI WebApp Project", category: "SEO AI Agent", img: "/maai.png", url: "https://kriti-maai-790275471938.australia-southeast1.run.app/" },
-    { title: "LostLink WebApp Project", category: "Lost and Found Management", img: "/Web App.png", url: "https://paknaan-lost-link.vercel.app/" },
-    { title: "Wendears Cake", category: "E-Commerce Website", img: "/Wendears.png", url: "https://wendears-cake.vercel.app/" },
-    { title: "Tourmate", category: "AI Travel Companion App", img: "/Tourmate'.png", url: "https://tour-mate-ai-game-agent.vercel.app/" },
-    { title: "COMS.AI", category: "Cebu Outage Monitoring System", img: "/COMS.png", url: "https://coms-ai.vercel.app/" },
-    { title: "PLAYPANDA", category: "Sports & E-Sports Tournament Site", img: "/PLAYPANDA.png" }
-  ];
+// Timeline list on the left; picking a role animates its details in on the right
+// (on phones the details open inline under the picked role instead).
+const Experience = () => {
+  const [filter, setFilter] = useState<typeof EXP_FILTERS[number]>('All');
+  const [active, setActive] = useState(experiences[0].org);
+  const list = experiences.filter((e) => filter === 'All' || e.kind === filter);
+  const current = list.find((e) => e.org === active) ?? list[0];
+  const indexOf = (e: typeof experiences[number]) => experiences.indexOf(e);
 
   return (
-    <section id="portfolio" className="relative py-32 px-6 overflow-hidden">
-      <SectionBackdrop id="portfolio" className="bg-linear-to-b from-pb-skin via-[#FEE6F7] to-pb-skin">
-        {/* Candy Kingdom scene, dimmed and faded at the edges like the hero background */}
-        <img
-          src="/bubblegum-bg.webp"
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover opacity-35 select-none"
-          style={{
-            maskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)',
-            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)'
-          }}
-        />
-      </SectionBackdrop>
-
-      <div className="relative max-w-7xl mx-auto">
-        <FadeIn>
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
-            <div className="max-w-2xl">
-              <p className="text-sm font-bold uppercase tracking-widest text-pb-magenta mb-4">Candy Kingdom Lab</p>
-              <h2 className="text-5xl md:text-7xl font-display font-bold tracking-tighter text-pb-magenta">
-                Latest<br /><span className="pb-outline text-pb-pink">Portfolio.</span>
-              </h2>
-              <p className="mt-6 text-lg text-pb-ink/70 leading-relaxed">
-                {projects.length} projects, from AI agents and automation systems to websites and e-commerce.
-              </p>
-              <button className="mt-8 inline-flex items-center gap-2 rounded-full border-[3px] border-pb-ink bg-pb-pink px-6 py-3 font-bold uppercase tracking-widest text-sm text-white shadow-[4px_4px_0_var(--color-pb-ink)] hover:shadow-[6px_6px_0_var(--color-pb-ink)] transition-shadow">
-                View All Projects <ArrowUpRight size={18} />
-              </button>
-            </div>
-            <AnimatedAsset
-              src="/bubblegum.webp"
-              alt="Princess Bubblegum holding BMO"
-              width={608}
-              height={1000}
-              animate={{ y: [0, -10, 0] }}
-              transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}
-              className="self-center md:self-end w-32 md:w-44 lg:w-52 h-auto shrink-0 select-none drop-shadow-[8px_8px_0_rgba(176,48,127,0.25)]"
-              draggable={false}
-            />
-          </div>
-        </FadeIn>
-
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 lg:auto-rows-[270px]">
-          {projects.map((project, i) => {
-            const featured = i === 0;
-            const isPrivate = !project.url;
-            // The featured card fills a full md row and 4 lg cells; stretch the last
-            // card across whatever is left empty on the final row.
-            const last = i === projects.length - 1;
-            const mdFill = last && (projects.length - 1) % 2 === 1 ? 'md:col-span-2' : '';
-            const lgLeft = (projects.length + 3) % 3;
-            const lgFill = last ? (lgLeft === 1 ? 'lg:col-span-3' : lgLeft === 2 ? 'lg:col-span-2' : '') : '';
-            return (
-              <FadeIn
-                key={project.title}
-                delay={i * 0.08}
-                className={featured ? 'md:col-span-2 lg:row-span-2' : `${mdFill} ${lgFill}`}
+    <section id="experience" className="relative scroll-mt-20 py-20 md:py-28 px-5 md:px-10 grid-bg">
+      <div className="max-w-7xl mx-auto">
+        <SectionHead top="Work" bottom="Experience" blurb={`${experiences.length} roles across tech, media, and design, from OJT to building AI systems.`}>
+          <div role="tablist" aria-label="Filter experience" className="flex flex-wrap gap-2">
+            {EXP_FILTERS.map((f) => (
+              <button
+                key={f}
+                role="tab"
+                type="button"
+                aria-selected={filter === f}
+                onClick={() => { setFilter(f); const first = experiences.find((e) => f === 'All' || e.kind === f); if (first) setActive(first.org); }}
+                className={`cut-sm px-4 py-2 font-mono text-[11px] uppercase tracking-[0.2em] transition-colors ${filter === f ? 'bg-lime text-void' : 'border border-electric-soft/40 text-mist hover:text-white'}`}
               >
-                <a data-motion-card
-                href={project.url}
-                target={isPrivate ? undefined : '_blank'}
-                rel={isPrivate ? undefined : 'noopener noreferrer'}
-                aria-label={isPrivate ? `${project.title} (private project)` : `Open ${project.title} in a new tab`}
-                className={`group relative block h-full ${featured ? 'min-h-[420px]' : 'min-h-[300px] lg:min-h-0'} rounded-[2rem] overflow-hidden border-[3px] border-pb-ink bg-white ${isPrivate ? 'cursor-default' : 'cursor-pointer'} shadow-[6px_6px_0_var(--color-pb-magenta)] hover:shadow-[10px_10px_0_var(--color-pb-magenta)] transition-shadow duration-300`}>
-                  <img
-                    src={project.img}
-                    alt={project.title}
-                    className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="absolute inset-0 bg-linear-to-t from-pb-ink/90 via-pb-ink/25 to-transparent" />
+                {f} <span className="opacity-60">{f === 'All' ? experiences.length : experiences.filter((e) => e.kind === f).length}</span>
+              </button>
+            ))}
+          </div>
+        </SectionHead>
 
-                  <div className="absolute top-5 left-5 right-5 flex items-start justify-between gap-3">
-                    <span className="w-11 h-11 shrink-0 rounded-full bg-pb-crown border-[3px] border-pb-ink flex items-center justify-center font-bold text-sm text-pb-ink">
-                      {String(i + 1).padStart(2, '0')}
-                    </span>
-                    <span className="px-3 py-1.5 rounded-full bg-white/90 backdrop-blur-sm text-[10px] md:text-xs font-bold uppercase tracking-widest text-pb-magenta text-right">
-                      {project.category}
-                    </span>
-                  </div>
-
-                  <div className="absolute inset-x-0 bottom-0 p-6 md:p-7 flex items-end justify-between gap-4">
-                    <div>
-                      {isPrivate && (
-                        <p className="mb-2 inline-flex items-center gap-1.5 rounded-full border-2 border-pb-ink bg-pb-crown px-3 py-1 text-[10px] md:text-xs font-bold uppercase tracking-widest text-pb-ink">
-                          <Lock size={12} /> Private Project
-                        </p>
+        <div className="grid lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-6 items-start">
+          {/* timeline list */}
+          <motion.ul layout className="relative border-l border-electric-soft/30 ml-2">
+            <AnimatePresence initial={false}>
+              {list.map((e) => {
+                const on = e === current;
+                return (
+                  <motion.li key={e.org} layout initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.25 }}>
+                    <button
+                      type="button"
+                      onClick={() => setActive(e.org)}
+                      aria-pressed={on}
+                      className={`relative w-full text-left pl-7 pr-4 py-4 transition-colors ${on ? 'bg-navy/90' : 'hover:bg-navy/50'}`}
+                    >
+                      <span className={`absolute -left-[7px] top-6 w-3 h-3 rounded-full border-2 transition-all ${on ? 'bg-lime border-lime shadow-[0_0_12px_#D4FF1F] scale-125' : 'bg-void border-electric-soft'}`} />
+                      <span className="block font-mono text-[11px] uppercase tracking-[0.2em] text-mist">{e.period} · {e.kind}</span>
+                      <span className={`mt-1 block font-display font-bold uppercase tracking-wide text-base md:text-lg transition-colors ${on ? 'text-lime' : 'text-white'}`}>{e.org}</span>
+                      <span className="block text-sm text-mist">{e.role}</span>
+                    </button>
+                    {/* phones: details inline */}
+                    <AnimatePresence initial={false}>
+                      {on && (
+                        <motion.div className="lg:hidden overflow-hidden" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}>
+                          <div className="cut m-3 border border-electric-soft/30 bg-navy p-5"><ExperienceDetail exp={e} index={indexOf(e)} /></div>
+                        </motion.div>
                       )}
-                      {featured && <p className="text-xs font-bold uppercase tracking-widest text-pb-skin mb-2">Featured project</p>}
-                      <h3 className={`font-display font-bold leading-tight text-white ${featured ? 'text-3xl md:text-5xl' : 'text-2xl'}`}>{project.title}</h3>
-                    </div>
-                    {!isPrivate && (
-                      <span className="w-12 h-12 shrink-0 rounded-full bg-pb-pink border-[3px] border-pb-ink text-white flex items-center justify-center transition-transform duration-300 group-hover:rotate-45">
-                        <ArrowUpRight size={20} />
-                      </span>
-                    )}
-                  </div>
-                </a>
-              </FadeIn>
-            );
-          })}
+                    </AnimatePresence>
+                  </motion.li>
+                );
+              })}
+            </AnimatePresence>
+          </motion.ul>
+
+          {/* desktop: detail panel */}
+          <div className="hidden lg:block sticky top-24">
+            <div className="cut relative overflow-hidden border border-electric-soft/30 bg-linear-to-br from-electric/30 via-panel to-navy p-8 min-h-[420px]">
+              <div className="absolute inset-0 grid-bg opacity-50" aria-hidden="true" />
+              <AnimatePresence mode="wait">
+                {current && (
+                  <motion.div key={current.org} className="relative" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.3 }}>
+                    <ExperienceDetail exp={current} index={indexOf(current)} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
         </div>
       </div>
     </section>
   );
 };
 
-// Tools grouped by what they're for; each group takes one of Lady Rainicorn's
-// rainbow stripes. (`stripe` = accent colour var, `Icon` = the group's tile icon.)
-const toolGroups: { title: string; stripe: string; Icon: typeof Code2; tools: { name: string; icon: string }[] }[] = [
+// --- Achievements ---
+
+type AchKind = 'Awards' | 'Certifications' | 'Recognition';
+const achievements: { badge: string; title: string; org: string; year?: string; kind: AchKind }[] = [
+  { badge: 'Champion', title: 'Poster Making Contest, Dance and Band', org: 'USJ-R CWTS', year: '2025', kind: 'Awards' },
+  { badge: 'Champion', title: 'Battle of the Beat', org: 'USJ-R CWTS', year: '2025', kind: 'Awards' },
+  { badge: 'Champion', title: 'Sinulog Photography Contest', org: 'Sinulog Festival', year: '2023', kind: 'Awards' },
+  { badge: '3rd Place', title: 'Mental Health Awareness Poster Making Contest', org: 'Poster Making Contest', year: '2024', kind: 'Awards' },
+  { badge: 'Best', title: 'Best Technical Manager', org: 'Don Macchiatos', year: 'Dec 2023', kind: 'Awards' },
+  { badge: 'Best', title: 'Best in Character Sketching', org: 'ACLC College of Mandaue', kind: 'Awards' },
+  { badge: 'Awarded', title: 'PIO for handling multiple brand-material projects', org: 'Skriptura Publication', kind: 'Awards' },
+  { badge: 'Certified', title: 'Prompt Engineering', org: 'Google & Coursera', year: '2025', kind: 'Certifications' },
+  { badge: 'Completed', title: 'Customer Service Training', org: 'JPMorgan Chase', year: '2025', kind: 'Certifications' },
+  { badge: 'Completed', title: 'S2S Academy modules', org: 'Accenture', year: '2025', kind: 'Certifications' },
+  { badge: 'NC II', title: 'UI/UX Design and Visual Graphics', org: 'Senior High School OJT', kind: 'Certifications' },
+  { badge: 'Workshop', title: 'Layout Grids, Components, Color Psychology & Design Fundamentals', org: 'AMA ACLC College of Mandaue', year: '2023', kind: 'Certifications' },
+  { badge: '56 projects', title: 'Completed 56 global projects before finishing Senior High School', org: 'Freelance', kind: 'Recognition' },
+  { badge: 'Designer', title: 'One of the designers of the first Don Macchiatos logo', org: 'Don Macchiatos', year: '2021', kind: 'Recognition' },
+  { badge: 'Analyst', title: 'Business Analyst of the capstone project', org: 'USJ-R Capstone', year: '2026', kind: 'Recognition' },
+];
+const ACH_FILTERS = ['All', 'Awards', 'Certifications', 'Recognition'] as const;
+const ACH_ICON: Record<AchKind, typeof Code2> = { Awards: Trophy, Certifications: BadgeCheck, Recognition: Award };
+
+const Achievements = () => {
+  const [filter, setFilter] = useState<typeof ACH_FILTERS[number]>('All');
+  const list = achievements.filter((a) => filter === 'All' || a.kind === filter);
+  const champions = achievements.filter((a) => a.badge === 'Champion').length;
+
+  return (
+    <section id="achievements" className="relative scroll-mt-20 py-20 md:py-28 px-5 md:px-10">
+      <div className="max-w-7xl mx-auto">
+        <SectionHead top="Achievements" bottom="& Awards" blurb={`${champions} championships, ${achievements.filter((a) => a.kind === 'Certifications').length} certifications, and the wins that shaped how I work.`}>
+          <div role="tablist" aria-label="Filter achievements" className="flex flex-wrap gap-2">
+            {ACH_FILTERS.map((f) => (
+              <button
+                key={f}
+                role="tab"
+                type="button"
+                aria-selected={filter === f}
+                onClick={() => setFilter(f)}
+                className={`cut-sm px-4 py-2 font-mono text-[11px] uppercase tracking-[0.2em] transition-colors ${filter === f ? 'bg-lime text-void' : 'border border-electric-soft/40 text-mist hover:text-white'}`}
+              >
+                {f} <span className="opacity-60">{f === 'All' ? achievements.length : achievements.filter((a) => a.kind === f).length}</span>
+              </button>
+            ))}
+          </div>
+        </SectionHead>
+
+        <motion.ul layout className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <AnimatePresence mode="popLayout">
+            {list.map((a) => {
+              const Icon = ACH_ICON[a.kind];
+              const top = a.badge === 'Champion';
+              return (
+                <motion.li
+                  key={a.title}
+                  layout
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.25 }}
+                  whileHover={{ y: -6 }}
+                  className={`group cut relative overflow-hidden border p-6 transition-colors ${top ? 'border-lime/60 bg-linear-to-br from-lime/10 via-navy to-navy' : 'border-electric-soft/30 bg-navy/80 hover:border-lime/50'}`}
+                >
+                  {top && <span aria-hidden="true" className="absolute inset-x-0 top-0 h-0.5 bg-lime shadow-[0_0_14px_#D4FF1F]" />}
+                  <div className="flex items-start justify-between gap-3">
+                    <span className={`w-11 h-11 flex items-center justify-center border transition-colors ${top ? 'border-lime text-lime' : 'border-electric-soft/50 text-white group-hover:border-lime group-hover:text-lime'}`}>
+                      <Icon size={20} strokeWidth={1.5} />
+                    </span>
+                    <span className={`px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.18em] ${top ? 'bg-lime text-void' : 'border border-lime/50 text-lime'}`}>{a.badge}</span>
+                  </div>
+                  <h3 className="mt-5 font-display font-bold uppercase tracking-wide text-base md:text-lg leading-snug text-white">{a.title}</h3>
+                  <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.15em] text-mist">{a.org}{a.year ? ` · ${a.year}` : ''}</p>
+                </motion.li>
+              );
+            })}
+          </AnimatePresence>
+        </motion.ul>
+      </div>
+    </section>
+  );
+};
+
+// --- Tools ---
+
+const toolGroups: { title: string; Icon: typeof Code2; tools: { name: string; icon: string; invert?: boolean }[] }[] = [
   {
-    title: "Languages", stripe: "var(--color-rain-red)", Icon: Code2,
+    title: "AI & Agents", Icon: Bot,
+    tools: [
+      { name: "Claude", icon: "https://cdn.simpleicons.org/claude/D97757" },
+      { name: "OpenAI", icon: "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/openai.svg", invert: true },
+      { name: "Hermes Agent", icon: "https://hermes-agent.nousresearch.com/img/desktop/badge.webp" },
+      { name: "Composio", icon: "https://composio.dev/favicon.ico" },
+      { name: "Sixth AI", icon: "https://trysixth.com/favicon.ico", invert: true },
+      { name: "GitHub Copilot", icon: "https://cdn.simpleicons.org/githubcopilot/white" },
+      { name: "Gemini", icon: "https://cdn.simpleicons.org/googlegemini/8E75B2" },
+      { name: "Cursor", icon: "https://cdn.simpleicons.org/cursor/white" },
+      { name: "Hugging Face", icon: "https://cdn.simpleicons.org/huggingface/FFD21E" },
+      { name: "LangChain", icon: "https://cdn.simpleicons.org/langchain/white" },
+      { name: "Ollama", icon: "https://cdn.simpleicons.org/ollama/white" },
+      { name: "Perplexity", icon: "https://cdn.simpleicons.org/perplexity/1FB8CD" },
+      { name: "DeepSeek", icon: "https://cdn.simpleicons.org/deepseek/4D6BFE" },
+      { name: "Llama", icon: "https://cdn.simpleicons.org/meta/0467DF" },
+      { name: "Mistral", icon: "https://cdn.simpleicons.org/mistralai/FA520F" },
+      { name: "n8n", icon: "https://cdn.simpleicons.org/n8n/EA4B71" }
+    ]
+  },
+  {
+    title: "Languages", Icon: Code2,
     tools: [
       { name: "HTML", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/html5/html5-original.svg" },
       { name: "CSS", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/css3/css3-original.svg" },
@@ -1205,7 +1066,7 @@ const toolGroups: { title: string; stripe: string; Icon: typeof Code2; tools: { 
     ]
   },
   {
-    title: "Frameworks & Libraries", stripe: "var(--color-rain-gold)", Icon: Layers,
+    title: "Frameworks", Icon: Layers,
     tools: [
       { name: "React", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/react/react-original.svg" },
       { name: "Vue", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/vuejs/vuejs-original.svg" },
@@ -1213,24 +1074,24 @@ const toolGroups: { title: string; stripe: string; Icon: typeof Code2; tools: { 
       { name: "Laravel", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/laravel/laravel-original.svg" },
       { name: "Tailwind", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/tailwindcss/tailwindcss-original.svg" },
       { name: "FastAPI", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/fastapi/fastapi-original.svg" },
-      { name: "Next.js", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nextjs/nextjs-original.svg" },
+      { name: "Next.js", icon: "https://cdn.simpleicons.org/nextdotjs/white" },
       { name: "NestJS", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nestjs/nestjs-original.svg" },
-      { name: "Express", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/express/express-original.svg" },
+      { name: "Express", icon: "https://cdn.simpleicons.org/express/white" },
       { name: "Angular", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/angular/angular-original.svg" },
       { name: "Svelte", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/svelte/svelte-original.svg" },
       { name: "Nuxt", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nuxtjs/nuxtjs-original.svg" },
       { name: "Astro", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/astro/astro-original.svg" },
-      { name: "Remix", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/remix/remix-original.svg" },
+      { name: "Remix", icon: "https://cdn.simpleicons.org/remix/white" },
       { name: "Django", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/django/django-plain.svg" },
-      { name: "Flask", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/flask/flask-original.svg" },
+      { name: "Flask", icon: "https://cdn.simpleicons.org/flask/white" },
       { name: "Spring Boot", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/spring/spring-original.svg" },
       { name: ".NET", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/dotnetcore/dotnetcore-original.svg" },
       { name: "Bootstrap", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/bootstrap/bootstrap-original.svg" },
       { name: "Sass", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/sass/sass-original.svg" },
       { name: "jQuery", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/jquery/jquery-original.svg" },
       { name: "Redux", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/redux/redux-original.svg" },
-      { name: "Prisma", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/prisma/prisma-original.svg" },
-      { name: "Three.js", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/threejs/threejs-original.svg" },
+      { name: "Prisma", icon: "https://cdn.simpleicons.org/prisma/white" },
+      { name: "Three.js", icon: "https://cdn.simpleicons.org/threedotjs/white" },
       { name: "Vite", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/vitejs/vitejs-original.svg" },
       { name: "React Native", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/react/react-original.svg" },
       { name: "Flutter", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/flutter/flutter-original.svg" },
@@ -1238,7 +1099,7 @@ const toolGroups: { title: string; stripe: string; Icon: typeof Code2; tools: { 
     ]
   },
   {
-    title: "Databases & Servers", stripe: "var(--color-rain-green)", Icon: Database,
+    title: "Databases", Icon: Database,
     tools: [
       { name: "MongoDB", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/mongodb/mongodb-original.svg" },
       { name: "MySQL", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/mysql/mysql-original.svg" },
@@ -1248,28 +1109,7 @@ const toolGroups: { title: string; stripe: string; Icon: typeof Code2; tools: { 
     ]
   },
   {
-    title: "AI & Agents", stripe: "var(--color-rain-blue)", Icon: Bot,
-    tools: [
-      { name: "Claude", icon: "https://cdn.simpleicons.org/claude/D97757" },
-      { name: "OpenAI", icon: "https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/openai.svg" },
-      { name: "Hermes Agent", icon: "https://hermes-agent.nousresearch.com/img/desktop/badge.webp" },
-      { name: "Composio", icon: "https://composio.dev/favicon.ico" },
-      { name: "Sixth AI", icon: "https://trysixth.com/favicon.ico" },
-      { name: "GitHub Copilot", icon: "https://cdn.simpleicons.org/githubcopilot/000000" },
-      { name: "Gemini", icon: "https://cdn.simpleicons.org/googlegemini/8E75B2" },
-      { name: "Cursor", icon: "https://cdn.simpleicons.org/cursor/000000" },
-      { name: "Hugging Face", icon: "https://cdn.simpleicons.org/huggingface/FFD21E" },
-      { name: "LangChain", icon: "https://cdn.simpleicons.org/langchain/1C3C3C" },
-      { name: "Ollama", icon: "https://cdn.simpleicons.org/ollama/000000" },
-      { name: "Perplexity", icon: "https://cdn.simpleicons.org/perplexity/1FB8CD" },
-      { name: "DeepSeek", icon: "https://cdn.simpleicons.org/deepseek/4D6BFE" },
-      { name: "Llama", icon: "https://cdn.simpleicons.org/meta/0467DF" },
-      { name: "Mistral", icon: "https://cdn.simpleicons.org/mistralai/FA520F" },
-      { name: "n8n", icon: "https://cdn.simpleicons.org/n8n/EA4B71" }
-    ]
-  },
-  {
-    title: "Design", stripe: "var(--color-rain-purple)", Icon: Palette,
+    title: "Design", Icon: Palette,
     tools: [
       { name: "Figma", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/figma/figma-original.svg" },
       { name: "Canva", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/canva/canva-original.svg" },
@@ -1279,10 +1119,10 @@ const toolGroups: { title: string; stripe: string; Icon: typeof Code2; tools: { 
     ]
   },
   {
-    title: "Dev Tools & OS", stripe: "var(--color-rain-pink-deep)", Icon: Wrench,
+    title: "Dev Tools & OS", Icon: Wrench,
     tools: [
       { name: "Git", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/git/git-original.svg" },
-      { name: "GitHub", icon: "https://cdn.simpleicons.org/github/181717" },
+      { name: "GitHub", icon: "https://cdn.simpleicons.org/github/white" },
       { name: "GitLab", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/gitlab/gitlab-original.svg" },
       { name: "Ubuntu", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/ubuntu/ubuntu-original.svg" },
       { name: "Linux", icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/linux/linux-original.svg" },
@@ -1292,460 +1132,554 @@ const toolGroups: { title: string; stripe: string; Icon: typeof Code2; tools: { 
   }
 ];
 
-const rainbowStripes = ['--color-rain-red', '--color-rain-gold', '--color-rain-mane', '--color-rain-green', '--color-rain-teal', '--color-rain-blue', '--color-rain-purple', '--color-rain-pink'];
+// Every tool in one list, split across three rows that loop in alternating directions.
+const allTools = toolGroups.flatMap((g) => g.tools.map((t) => ({ ...t, group: g.title })));
+const toolRows = [0, 1, 2].map((r) => allTools.filter((_, i) => i % 3 === r));
 
-// Lady Rainicorn-themed while current: blush-pink backdrop with a rainbow band,
-// rainbow lettering, and tools sorted into six colour-coded cards.
-const ToolsSection = () => {
-  const onSection = useSectionActive('tools');
-  const total = toolGroups.reduce((n, g) => n + g.tools.length, 0);
+const ToolTile = ({ tool, hidden }: { tool: typeof allTools[number], hidden?: boolean }) => (
+  <li aria-hidden={hidden || undefined} className="group mr-3 w-32 md:w-36 shrink-0 flex flex-col items-center gap-3 border border-electric-soft/15 bg-void/60 px-2 py-5 text-center transition-colors hover:border-lime/60">
+    <span className="w-11 h-11 flex items-center justify-center drop-shadow-[0_0_10px_rgb(69_96_255/0.45)] group-hover:drop-shadow-[0_0_12px_rgb(212_255_31/0.5)] transition-[filter]">
+      <img src={tool.icon} alt="" className={`w-full h-full object-contain ${tool.invert ? "invert" : ""}`} referrerPolicy="no-referrer" />
+    </span>
+    <span className="font-mono text-[10px] md:text-[11px] uppercase tracking-wider text-mist group-hover:text-white leading-tight">{tool.name}</span>
+  </li>
+);
 
-  return (
-    <section id="tools" className="relative overflow-hidden py-28 px-6">
-      <SectionBackdrop id="tools" className="bg-linear-to-b from-rain-blush via-white to-[#EEF3FF]">
-        {/* rainbow band across the top */}
-        <div className="absolute inset-x-0 top-0 flex h-2">
-          {rainbowStripes.map((v) => <span key={v} className="flex-1" style={{ background: `var(${v})` }} />)}
-        </div>
-        {/* Tree Fort couch scene, dimmed and faded at the edges like the hero background */}
-        <img
-          src="/tools-bg.webp"
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover opacity-20 select-none"
-          style={{
-            maskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)',
-            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)'
-          }}
-        />
-      </SectionBackdrop>
-
-      <div className="relative max-w-7xl mx-auto">
-        <FadeIn>
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-14">
-            <div className="max-w-2xl">
-              <p className={`text-sm font-bold uppercase tracking-widest mb-4 transition-colors ${onSection ? 'text-rain-purple' : 'text-accent-start'}`}>My toolbox</p>
-              <h2 className={`text-5xl md:text-7xl font-display font-bold tracking-tighter ${onSection ? 'rainbow-text' : 'title-text'}`}>
-                Tools &amp;<br />Technologies.
-              </h2>
-              <p className="mt-5 text-lg font-medium text-ink/75">
-                {total} tools across {toolGroups.length} areas, from code and databases to AI agents and design.
-              </p>
-            </div>
-            <AnimatedAsset
-              src="/rainicorn.webp"
-              alt="Lady Rainicorn surrounded by coding tool icons"
-              width={899}
-              height={900}
-              animate={{ y: [0, -12, 0], rotate: [-2, 2, -2] }}
-              transition={{ duration: 4.2, repeat: Infinity, ease: "easeInOut" }}
-              className="self-center md:self-end w-40 md:w-56 lg:w-64 h-auto shrink-0 select-none drop-shadow-[0_12px_24px_rgba(120,96,240,0.25)]"
-              draggable={false}
-            />
-          </div>
-        </FadeIn>
-
-        <div className="columns-1 md:columns-2 lg:columns-3 gap-6">
-          {toolGroups.map((group, gi) => (
-            <FadeIn key={group.title} delay={gi * 0.08} className="break-inside-avoid mb-6">
-              <div
-                data-motion-card
-                className="h-full rounded-3xl border-2 bg-white/85 backdrop-blur-md p-6 shadow-sm transition-shadow hover:shadow-lg overflow-hidden relative"
-                style={{ borderColor: `color-mix(in oklab, ${group.stripe} 45%, transparent)` }}
-              >
-                <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1.5" style={{ background: group.stripe }} />
-                <div className="flex items-center gap-3 mb-5">
-                  <span className="w-11 h-11 rounded-xl flex items-center justify-center text-white shadow-sm" style={{ background: group.stripe }}>
-                    <group.Icon size={22} strokeWidth={2.4} />
-                  </span>
-                  <div>
-                    <h3 className="font-display font-bold text-xl leading-tight text-ink">{group.title}</h3>
-                    <p className="text-xs font-bold uppercase tracking-widest text-ink/40">{group.tools.length} tools</p>
-                  </div>
-                </div>
-                <ul className="flex flex-wrap gap-2">
-                  {group.tools.map((tool) => (
-                    <li
-                      key={tool.name}
-                      className="motion-tool flex items-center gap-2 rounded-full border border-black/10 bg-white pl-2 pr-3 py-1.5 text-sm font-medium text-ink shadow-[0_1px_0_rgba(0,0,0,0.04)] transition-transform duration-200 hover:-translate-y-0.5"
-                    >
-                      <img src={tool.icon} alt="" loading="lazy" className="w-5 h-5 object-contain" referrerPolicy="no-referrer" />
-                      {tool.name}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </FadeIn>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-};
-
-const faqGradients = [
-  'linear-gradient(160deg, var(--color-accent-start) 0%, var(--color-secondary) 100%)',
-  'linear-gradient(160deg, var(--color-highlight) 0%, var(--color-accent-end) 100%)',
-  'linear-gradient(160deg, var(--color-accent-end) 0%, var(--color-tertiary) 100%)',
-  'linear-gradient(160deg, var(--color-secondary) 0%, var(--color-highlight) 100%)'
-];
-// Lumpy Space Princess versions — lavender body, blush, star yellow.
-const faqGradientsLsp = [
-  'linear-gradient(160deg, var(--color-lsp-body) 0%, var(--color-lsp-blush) 100%)',
-  'linear-gradient(160deg, var(--color-lsp-star) 0%, var(--color-lsp-body) 100%)',
-  'linear-gradient(160deg, var(--color-lsp-blush) 0%, var(--color-lsp-mist) 100%)',
-  'linear-gradient(160deg, var(--color-lsp-mist) 0%, var(--color-lsp-body) 100%)'
-];
-
-// Twinkling star positions for the FAQ backdrop (left %, top %, size px, delay s).
-const lspStars = [
-  [6, 18, 18, 0], [14, 70, 12, 1.2], [24, 35, 10, 0.6], [78, 22, 16, 0.3],
-  [88, 62, 20, 1.6], [94, 30, 10, 0.9], [60, 85, 12, 2.1], [40, 12, 9, 1.8]
-] as const;
-
-// Fanned card carousel — center card active, side cards splay out and rotate,
-// styled after the "Daily Energy" Framer demo (decisive-reassurance-155626.framer.app).
-const FaqFanCard = ({
-  faq,
-  offset,
-  isActive,
-  onSelect,
-  gradient
-}: {
-  faq: { q: string; a: string };
-  offset: number;
-  isActive: boolean;
-  onSelect: () => void;
-  gradient: string;
-}) => {
-  const abs = Math.abs(offset);
-  const hidden = abs > 3;
-
-  return (
-    <motion.button
-      type="button"
-      onClick={onSelect}
-      aria-current={isActive}
-      className="absolute top-0 left-1/2 w-[240px] h-[340px] md:w-[300px] md:h-[400px] rounded-[1.75rem] overflow-hidden text-left shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
-      style={{ background: gradient, transformOrigin: 'bottom center' }}
-      initial={false}
-      animate={{
-        x: `calc(-50% + ${offset * 64}px)`,
-        y: abs * 16,
-        rotate: offset * 10,
-        scale: isActive ? 1 : Math.max(0.8, 1 - abs * 0.09),
-        opacity: hidden ? 0 : isActive ? 1 : 0.45,
-        filter: isActive ? 'blur(0px)' : 'blur(1.5px)',
-        zIndex: 100 - abs
-      }}
-      transition={{ type: 'spring', stiffness: 260, damping: 28 }}
-    >
-      <div className="relative h-full p-6 md:p-7 flex flex-col text-ink">
-        <span className="self-end shrink-0 px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm text-[10px] font-bold uppercase tracking-widest">
-          FAQ
-        </span>
-        <div className="mt-4 flex-1 min-h-0 flex flex-col">
-          <h3 className="font-display font-bold text-xl md:text-2xl leading-tight mb-3 line-clamp-2 shrink-0">{faq.q}</h3>
-          <AnimatePresence>
-            {isActive && (
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3, delay: 0.15 }}
-                className="flex-1 min-h-0 overflow-y-auto no-scrollbar pr-1"
-              >
-                <p className="text-sm md:text-base leading-relaxed text-ink/90">{faq.a}</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-        {isActive && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/25 to-transparent rounded-b-[1.75rem]" />
-        )}
-      </div>
-    </motion.button>
-  );
-};
-
-const FAQ = () => {
-  const faqs = [
-    { q: "What services do you offer?", a: "I offer a full range of design services including UI/UX design, branding, product strategy, graphic design, motion graphics, video editing, photo manipulation, system management, and web development and many more." },
-    { q: "How can I contact you?", a: "You can reach out via the contact: Email: riel.engana@student.passerellesnumeriques.org. or call 09850254857" },
-    { q: "How much does a project cost?", a: "Project costs vary based on scope and complexity. I provide custom quotes after an initial discovery call." },
-    { q: "Which tools do you provide?", a: "I primarily use Figma for design, and for development I use HTML, CSS, PHP, JAVA, REACT, NODEJS, TYPESCRIPT, and modern web technologies like LARAVEL, TAILWIND, and ANYTHING for development, and in regards with databases, I use MongoDB, MySQL and Oracle." }
-  ];
-  const [activeIndex, setActiveIndex] = useState(Math.floor((faqs.length - 1) / 2));
-  const goToPrevious = () => setActiveIndex((activeIndex - 1 + faqs.length) % faqs.length);
-  const goToNext = () => setActiveIndex((activeIndex + 1) % faqs.length);
-  // Lumpy Space Princess-themed while current: lavender mist with twinkling
-  // stars, purple lettering with a star-yellow "Questions.", LSP card gradients.
-  const onSection = useSectionActive('faq');
-  const gradients = onSection ? faqGradientsLsp : faqGradients;
-
-  return (
-    <section id="faq" className="relative py-32 px-6 overflow-hidden">
-      <SectionBackdrop id="faq" className="bg-linear-to-b from-lsp-mist via-[#E4D2F3] to-lsp-mist">
-        {/* Lumpy Space scene, dimmed and faded at the edges like the hero background */}
-        <img
-          src="/faq-bg.webp"
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover opacity-35 select-none"
-          style={{
-            maskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)',
-            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)'
-          }}
-        />
-        {lspStars.map(([left, top, size, delay], i) => (
-          <span
-            key={i}
-            className="motion-sparkle absolute bg-lsp-star [clip-path:polygon(50%_0,61%_35%,98%_35%,68%_57%,79%_91%,50%_70%,21%_91%,32%_57%,2%_35%,39%_35%)]"
-            style={{ left: `${left}%`, top: `${top}%`, width: size, height: size, animationDelay: `${delay}s` }}
-          />
-        ))}
-      </SectionBackdrop>
-
-      <div className="relative max-w-6xl mx-auto">
-        <FadeIn>
-          <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-10 mb-16 md:mb-20">
-            <div className="text-center md:text-left">
-              <h2 className={`text-4xl md:text-6xl font-display font-bold mb-4 tracking-tighter ${onSection ? 'text-lsp-deep' : 'title-text'}`}>
-                Frequently Asked<br /><span className={onSection ? 'lsp-outline text-lsp-star' : ''}>Questions.</span>
-              </h2>
-              <p className={`inline-block rounded-full px-4 py-1.5 font-medium transition-colors duration-700 ${onSection ? 'text-lsp-deep bg-lsp-mist/85 backdrop-blur-sm' : 'text-ink/60 bg-transparent'}`}>Tap a card to flip through the answers.</p>
-            </div>
-            <AnimatedAsset
-              src="/lsp.webp"
-              alt="Lumpy Space Princess thinking with a finger on her lip"
-              width={702}
-              height={700}
-              animate={{ y: [0, -12, 0], rotate: [-2, 2, -2] }}
-              transition={{ duration: 3.8, repeat: Infinity, ease: "easeInOut" }}
-              className="w-28 md:w-40 h-auto shrink-0 select-none drop-shadow-[6px_6px_0_rgba(107,63,143,0.25)]"
-              draggable={false}
-            />
-          </div>
-        </FadeIn>
-
-        <div className="relative h-[400px] md:h-[460px] mb-12">
-          {faqs.map((faq, index) => (
-            <FaqFanCard
-              key={faq.q}
-              faq={faq}
-              offset={index - activeIndex}
-              isActive={index === activeIndex}
-              onSelect={() => setActiveIndex(index)}
-              gradient={gradients[index % gradients.length]}
-            />
-          ))}
-        </div>
-
-        <div className="flex items-center justify-center gap-6">
-          <button
-            type="button"
-            onClick={goToPrevious}
-            className={`w-10 h-10 md:w-12 md:h-12 rounded-full border bg-white/50 backdrop-blur-md flex items-center justify-center transition-colors ${onSection ? 'border-lsp-deep/40 text-lsp-deep hover:bg-lsp-deep hover:text-white' : 'border-black/20 hover:border-accent-start hover:text-accent-start'}`}
-            aria-label="Previous question"
-          >
-            <ChevronLeft size={20} />
-          </button>
-          <div className="flex items-center gap-2">
-            {faqs.map((_, index) => (
-              <button
-                key={index}
-                type="button"
-                onClick={() => setActiveIndex(index)}
-                className={`w-2.5 h-2.5 rounded-full transition-colors ${index === activeIndex ? (onSection ? 'bg-lsp-deep' : 'bg-accent-start') : 'bg-black/20'}`}
-                aria-label={`Show question ${index + 1}`}
-              />
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={goToNext}
-            className={`w-10 h-10 md:w-12 md:h-12 rounded-full border bg-white/50 backdrop-blur-md flex items-center justify-center transition-colors ${onSection ? 'border-lsp-deep/40 text-lsp-deep hover:bg-lsp-deep hover:text-white' : 'border-black/20 hover:border-accent-start hover:text-accent-start'}`}
-            aria-label="Next question"
-          >
-            <ChevronRight size={20} />
-          </button>
-        </div>
-      </div>
-    </section>
-  );
-};
-
-// Falling snow positions for the Contact backdrop (left %, size px, duration s, delay s, drift px).
-const snowflakes = [
-  [3, 6, 11, 0, 20], [10, 4, 14, 3, -15], [18, 8, 12, 6, 30], [26, 5, 16, 1.5, -25],
-  [34, 3, 13, 4.5, 10], [42, 7, 15, 2, -30], [50, 4, 12, 7, 25], [58, 6, 17, 0.5, -20],
-  [66, 3, 14, 5, 15], [74, 8, 13, 2.5, -10], [82, 5, 16, 6.5, 30], [90, 4, 12, 1, -25],
-  [96, 6, 15, 3.5, 12]
-] as const;
-
-// Ice King's royal mail while current: royal-blue backdrop with the Ice Kingdom
-// scene and falling snow, frost lettering, and the form in a frosted-ice card
-// under a gold crown. `dark` switches the section's dark: styles on.
-const Contact = () => {
-  const onSection = useSectionActive('contact');
-  const field = "w-full rounded-2xl px-5 py-4 outline-none transition-shadow bg-black/5 focus:ring-2 focus:ring-accent-start dark:bg-white/10 dark:text-white dark:placeholder:text-ik-skin/50 border border-transparent dark:border-ik-skin/25 dark:focus:ring-ik-crown";
-  const label = "text-xs font-bold uppercase tracking-widest text-ink/40 dark:text-ik-skin";
-
-  return (
-  <section id="contact" className={`py-32 px-6 relative overflow-hidden transition-colors duration-700 ${onSection ? 'dark text-white' : ''}`}>
-    <SectionBackdrop id="contact" className="bg-linear-to-b from-ik-navy via-ik-robe/80 to-ik-navy">
-      {/* Ice Kingdom scene, dimmed and faded at the edges like the hero background */}
-      <img
-        src="/contact-bg.webp"
-        alt=""
-        className="absolute inset-0 w-full h-full object-cover opacity-35 select-none"
-        style={{
-          maskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)',
-          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 18%, black 80%, transparent 100%)'
-        }}
-      />
-      {snowflakes.map(([left, size, dur, delay, drift], i) => (
-        <span
-          key={i}
-          className="snowflake"
-          style={{ left: `${left}%`, width: size, height: size, '--dur': `${dur}s`, '--delay': `${delay}s`, '--drift': `${drift}px` } as React.CSSProperties}
-        />
-      ))}
-    </SectionBackdrop>
-
-    <div className="max-w-7xl mx-auto relative z-10">
-      <div className="grid lg:grid-cols-[0.95fr_1.05fr] gap-14 lg:gap-16 items-center">
-        {/* Left: invitation, contact details, Ice King with his letter */}
-        <FadeIn direction="right" className="min-w-0">
-          <p className="text-sm font-bold uppercase tracking-widest text-accent-start dark:text-ik-crown mb-4">Royal mail</p>
-          <h2 className={`text-5xl md:text-6xl font-display font-bold tracking-tighter leading-[0.95] ${onSection ? 'frost-text' : 'title-text'}`}>
-            Send me an<br />email now!
-          </h2>
-          <p className="mt-6 max-w-md text-lg leading-relaxed text-ink/60 dark:text-ik-skin/85">
-            Got a project, a question, or just want to say hi? Send a message and I'll get back to you.
-          </p>
-
-          <div className="mt-8 flex flex-col gap-3 max-w-md">
-            <a href="mailto:riel.engana@student.passerellesnumeriques.org" className="group flex items-center gap-4 rounded-2xl border px-4 py-3 transition-colors border-black/10 bg-white/60 hover:border-accent-start dark:border-ik-skin/25 dark:bg-white/10 dark:hover:border-ik-crown">
-              <span className="w-11 h-11 shrink-0 rounded-full flex items-center justify-center bg-accent-start/15 text-accent-start dark:bg-ik-crown dark:text-ik-navy"><Mail size={20} /></span>
-              <span className="min-w-0">
-                <span className="block text-xs font-bold uppercase tracking-widest text-ink/40 dark:text-ik-skin/70">Email</span>
-                <span className="block truncate font-medium">riel.engana@student.passerellesnumeriques.org</span>
-              </span>
-            </a>
-            <a href="tel:09850254857" className="group flex items-center gap-4 rounded-2xl border px-4 py-3 transition-colors border-black/10 bg-white/60 hover:border-accent-start dark:border-ik-skin/25 dark:bg-white/10 dark:hover:border-ik-crown">
-              <span className="w-11 h-11 shrink-0 rounded-full flex items-center justify-center bg-accent-start/15 text-accent-start dark:bg-ik-crown dark:text-ik-navy"><Phone size={20} /></span>
-              <span>
-                <span className="block text-xs font-bold uppercase tracking-widest text-ink/40 dark:text-ik-skin/70">Phone</span>
-                <span className="block font-medium">0985 025 4857</span>
-              </span>
-            </a>
-          </div>
-
-          <div className="mt-10 flex items-end gap-5">
-            <AnimatedAsset
-              src="/ice-king.webp"
-              alt="Ice King waving a letter"
-              width={705}
-              height={900}
-              animate={{ y: [0, -10, 0], rotate: [-2, 2, -2] }}
-              transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}
-              className="w-36 md:w-48 h-auto shrink-0 select-none drop-shadow-[0_10px_24px_rgba(0,16,96,0.45)]"
-              draggable={false}
-            />
-            {/* BMO on the line — framed like a pane of ice */}
-            <div className="relative w-36 md:w-44 aspect-[4/3] rounded-2xl overflow-hidden rotate-3 border-4 border-white/70 dark:border-ik-skin/70 shadow-xl">
-              <img src="/contact-bmo.gif" alt="BMO happily dancing" className="w-full h-full object-cover" />
-            </div>
-          </div>
-        </FadeIn>
-
-        {/* Right: the form in a frosted-ice card under a gold crown */}
-        <FadeIn direction="left" className="min-w-0">
-          <div className="relative rounded-[2rem] border p-7 pt-12 md:p-10 md:pt-14 backdrop-blur-xl border-black/5 bg-white/70 shadow-xl dark:border-ik-skin/35 dark:bg-ik-navy/45 dark:shadow-[0_0_60px_rgba(184,238,251,0.18)]">
-            {/* crown badge */}
-            <svg viewBox="0 0 64 40" aria-hidden="true" className="absolute -top-7 left-1/2 -translate-x-1/2 w-20 h-auto drop-shadow-[0_4px_0_rgba(0,16,96,0.35)]">
-              <path d="M4 36 L4 12 L18 24 L32 4 L46 24 L60 12 L60 36 Z" fill="var(--color-ik-crown)" stroke="var(--color-ik-navy)" strokeWidth="3" strokeLinejoin="round" />
-              <circle cx="18" cy="29" r="3.5" fill="var(--color-ik-gem)" />
-              <circle cx="32" cy="27" r="4.5" fill="var(--color-ik-gem)" />
-              <circle cx="46" cy="29" r="3.5" fill="var(--color-ik-gem)" />
-            </svg>
-
-            <form action="https://formsubmit.co/rieljake.engana.24@usjr.edu.ph" method="POST" className="space-y-5">
-              <input type="hidden" name="_subject" value="You have New Message from your client Jake!" />
-              <input type="hidden" name="_captcha" value="false" />
-
-              <div className="grid md:grid-cols-2 gap-5">
-                <div className="space-y-2">
-                  <label htmlFor="contact-name" className={label}>Full Name</label>
-                  <input id="contact-name" type="text" name="name" required placeholder="Name" className={field} />
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="contact-email" className={label}>Email</label>
-                  <input id="contact-email" type="email" name="email" required placeholder="yourname@email.com" className={field} />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label htmlFor="contact-message" className={label}>Message</label>
-                <textarea id="contact-message" name="message" required rows={6} placeholder="Write your message..." className={`${field} resize-none`} />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl font-bold transition-transform hover:scale-[1.02] bg-linear-to-r from-accent-start to-accent-end text-ink border-2 border-transparent dark:bg-none dark:bg-ik-crown dark:text-ik-navy dark:border-ik-navy dark:shadow-[0_6px_0_var(--color-ik-navy)]"
-              >
-                <Mail size={20} /> Send Email
-              </button>
-            </form>
-          </div>
-        </FadeIn>
-      </div>
-
-      {/* The end of the adventure: open the chest for a thank-you */}
-      <TreasureChest onSection={onSection} />
+const Tools = () => (
+  <section id="tools" className="relative scroll-mt-20 py-20 md:py-28 grid-bg overflow-hidden">
+    <div className="max-w-7xl mx-auto px-5 md:px-10">
+      <SectionHead top="Tools" bottom="& Skills" blurb={`${allTools.length} tools across ${toolGroups.length} areas, from code and databases to AI agents and design.`} />
     </div>
-  </section>
-  );
-};
 
-const Footer = () => (
-  <footer className="py-14 px-6 bg-ink text-white">
-    <div className="max-w-7xl mx-auto">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
-        <a href="#" className="self-start lg:self-auto"><Logo className="text-2xl" /></a>
-        <nav aria-label="Footer">
-          <ul className="flex flex-wrap gap-x-8 gap-y-3 font-medium">
-            {NAV_LINKS.map((l) => (
-              <li key={l.href}><a href={l.href} className="text-white/75 hover:text-jake-fur transition-colors">{l.label}</a></li>
+    <div className="border-y border-electric-soft/25 bg-navy/80 py-5 flex flex-col gap-3" aria-label="Tools I use">
+      {toolRows.map((row, r) => (
+        <div key={r} className="marquee marquee-mask overflow-hidden">
+          {/* the list is rendered twice and the track slides by half, so it loops seamlessly */}
+          <ul
+            className={`marquee-track flex w-max ${r % 2 === 1 ? 'marquee-track--reverse' : ''}`}
+            style={{ '--marquee-duration': `${70 + r * 10}s` } as React.CSSProperties}
+          >
+            {[...row, ...row].map((tool, i) => (
+              <ToolTile key={`${tool.name}-${i}`} tool={tool} hidden={i >= row.length} />
             ))}
           </ul>
-        </nav>
-        <div className="flex gap-3">
-          {SOCIAL_LINKS.map(({ href, label, Icon }) => (
-            <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label} className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center text-white/75 hover:text-jake-fur hover:border-jake-fur transition-colors">
-              <Icon size={18} />
-            </a>
+        </div>
+      ))}
+    </div>
+
+    <div className="max-w-7xl mx-auto px-5 md:px-10 mt-6 flex flex-wrap gap-x-6 gap-y-2">
+      {toolGroups.map((g) => (
+        <span key={g.title} className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-mist">
+          <g.Icon size={14} className="text-lime" /> {g.title} <span className="opacity-50">{g.tools.length}</span>
+        </span>
+      ))}
+    </div>
+  </section>
+);
+
+// --- Reviews ---
+
+type Review = typeof reviews[number];
+
+const initials = (name: string) => name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+
+const Avatar = ({ review, className }: { review: Review, className: string }) =>
+  review.avatarSrc ? (
+    <img src={review.avatarSrc} alt={review.name} loading="lazy" className={`${className} object-cover`} />
+  ) : (
+    <span role="img" aria-label={review.name} className={`${className} flex items-center justify-center bg-electric text-white font-bold`}>{initials(review.name)}</span>
+  );
+
+// `dark` makes the client logos (which use dark: variants) render light.
+const ReviewCard = ({ review, hidden = false }: { review: Review, hidden?: boolean }) => (
+  <figure aria-hidden={hidden || undefined} className="dark w-[300px] md:w-[380px] mr-5 shrink-0 flex flex-col justify-between gap-6 border border-electric-soft/25 bg-navy/80 p-6 transition-colors hover:border-lime/50">
+    <div className="flex flex-col gap-5">
+      <review.Logo />
+      <blockquote className="text-sm md:text-base leading-relaxed text-white/85">&ldquo;{review.quote}&rdquo;</blockquote>
+    </div>
+    <figcaption className="flex items-center gap-3">
+      <Avatar review={review} className="w-10 h-10 shrink-0 rounded-full ring-2 ring-electric-soft/60 text-xs" />
+      <div className="min-w-0">
+        <div className="flex items-center gap-1.5 font-semibold text-white text-sm">
+          <span className="truncate">{review.name}</span>
+          <BadgeCheck size={15} className="shrink-0 text-lime" aria-label="Verified" />
+        </div>
+        <div className="font-mono text-[10px] uppercase tracking-wider text-mist truncate">{review.role}</div>
+      </div>
+    </figcaption>
+  </figure>
+);
+
+const ReviewRow = ({ items, reverse = false, duration }: { items: Review[], reverse?: boolean, duration: string }) => (
+  <div className="marquee marquee-mask overflow-hidden py-2">
+    <div className={`marquee-track flex w-max ${reverse ? 'marquee-track--reverse' : ''}`} style={{ '--marquee-duration': duration } as React.CSSProperties}>
+      {[0, 1].map((copy) => (
+        <div key={copy} className="flex">
+          {[...items, ...items].map((review, i) => (
+            <ReviewCard key={`${copy}-${i}-${review.id}`} review={review} hidden={copy === 1 || i >= items.length} />
           ))}
         </div>
+      ))}
+    </div>
+  </div>
+);
+
+const Reviews = () => {
+  const [spotlight, ...rest] = reviews;
+  const SpotlightLogo = spotlight.Logo;
+
+  return (
+    <section id="reviews" className="relative scroll-mt-20 py-20 md:py-28 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-5 md:px-10">
+        <SectionHead top="Client" bottom="Signals" blurb="Hear first-hand from the teams and clients I've built for." />
+
+        <FadeIn className="cut dark relative mb-10 overflow-hidden bg-linear-to-br from-electric/50 via-panel to-navy border border-electric-soft/30 p-8 md:p-12">
+          <span aria-hidden="true" className="absolute -top-8 right-6 md:right-12 font-display text-[10rem] md:text-[13rem] leading-none text-lime/20 select-none">&ldquo;</span>
+          <div className="relative grid md:grid-cols-[1fr_auto] gap-8 items-end">
+            <div>
+              <SpotlightLogo />
+              <blockquote className="mt-6 text-xl md:text-3xl leading-snug font-medium text-white">&ldquo;{spotlight.quote}&rdquo;</blockquote>
+            </div>
+            <figcaption className="flex items-center gap-4">
+              <Avatar review={spotlight} className="w-16 h-16 shrink-0 rounded-full ring-2 ring-lime" />
+              <div>
+                <div className="flex items-center gap-1.5 text-lg font-semibold text-white">
+                  {spotlight.name}
+                  <BadgeCheck size={18} className="text-lime" aria-label="Verified" />
+                </div>
+                <div className="font-mono text-xs uppercase tracking-wider text-mist">{spotlight.role}</div>
+              </div>
+            </figcaption>
+          </div>
+        </FadeIn>
       </div>
-      <div className="mt-10 pt-6 border-t border-white/10 flex flex-col md:flex-row justify-between gap-4 text-xs text-white/45">
-        <p>© 2026 Portfolio. All rights reserved.</p>
-        <div className="flex gap-6">
-          <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-          <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
-          <a href="#" className="hover:text-white transition-colors">Cookies</a>
+
+      <div className="flex flex-col gap-3">
+        <ReviewRow items={rest.slice(0, 4)} duration="55s" />
+        <ReviewRow items={rest.slice(4)} duration="60s" reverse />
+      </div>
+    </section>
+  );
+};
+
+// --- FAQ ---
+
+const faqs = [
+  { q: "What services do you offer?", a: "I offer a full range of design services including UI/UX design, branding, product strategy, graphic design, motion graphics, video editing, photo manipulation, system management, and web development and many more." },
+  { q: "How can I contact you?", a: "You can reach out via the contact: Email: riel.engana@student.passerellesnumeriques.org. or call 09850254857" },
+  { q: "How much does a project cost?", a: "Project costs vary based on scope and complexity. I provide custom quotes after an initial discovery call." },
+  { q: "Which tools do you provide?", a: "I primarily use Figma for design, and for development I use HTML, CSS, PHP, JAVA, REACT, NODEJS, TYPESCRIPT, and modern web technologies like LARAVEL, TAILWIND, and ANYTHING for development, and in regards with databases, I use MongoDB, MySQL and Oracle." }
+];
+
+const FAQ = () => {
+  const [open, setOpen] = useState<number | null>(0);
+
+  return (
+    <section id="faq" className="relative scroll-mt-20 py-20 md:py-28 px-5 md:px-10">
+      <div className="max-w-7xl mx-auto grid lg:grid-cols-[0.8fr_1.2fr] gap-10">
+        <div>
+          <SectionHead top="Frequently" bottom="Asked" />
+          <p className="text-mist max-w-sm leading-relaxed -mt-4">
+            Something else on your mind? <a href="#contact" className="text-lime underline underline-offset-4">Send me a message</a> or ask Profilio Bot in the corner.
+          </p>
         </div>
+        <div className="border-t border-electric-soft/25">
+          {faqs.map((f, i) => {
+            const isOpen = open === i;
+            return (
+              <div key={f.q} className="border-b border-electric-soft/25">
+                <button
+                  type="button"
+                  onClick={() => setOpen(isOpen ? null : i)}
+                  aria-expanded={isOpen}
+                  className="w-full flex items-center gap-5 py-6 text-left group"
+                >
+                  <span className="font-mono text-xs text-lime">{String(i + 1).padStart(2, '0')}</span>
+                  <span className={`flex-1 font-display font-bold uppercase tracking-wide text-lg md:text-xl transition-colors ${isOpen ? 'text-lime' : 'text-white group-hover:text-lime'}`}>{f.q}</span>
+                  <span className={`w-9 h-9 shrink-0 flex items-center justify-center border transition-colors ${isOpen ? 'bg-lime border-lime text-void' : 'border-electric-soft/50 text-white'}`}>
+                    {isOpen ? <Minus size={16} /> : <Plus size={16} />}
+                  </span>
+                </button>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="overflow-hidden"
+                    >
+                      <p className="pb-6 pl-10 pr-12 text-mist leading-relaxed">{f.a}</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+// --- Contact ---
+
+// Magellan's Cross kiosk (Cebu) as a rotating 3D wireframe. Octagon geometry:
+// apothem = side / (2·tan 22.5°); roof faces tilt in by atan(roofApothem / roofHeight).
+const KIOSK = (() => {
+  const t = Math.tan(Math.PI / 8);
+  const wall = { side: 44, height: 54, top: -6 };
+  const roof = { side: 56, height: 34 };
+  const wallApothem = wall.side / (2 * t);
+  const roofApothem = roof.side / (2 * t);
+  const roofSlant = Math.hypot(roofApothem, roof.height);
+  const roofTilt = (Math.atan(roofApothem / roof.height) * 180) / Math.PI;
+  return { wall, roof, wallApothem, roofApothem, roofSlant, roofTilt };
+})();
+
+const KioskWall = ({ arched }: { arched: boolean }) => {
+  const { side: w, height: h } = KIOSK.wall;
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} className="overflow-visible">
+      <rect x="0.5" y="0.5" width={w - 1} height={h - 1} fill="rgb(30 55 255 / 0.12)" stroke="#6B83FF" strokeWidth="1.2" />
+      <line x1="0" y1="5" x2={w} y2="5" stroke="#6B83FF" strokeWidth="0.8" opacity="0.7" />
+      {arched ? (
+        <path d={`M9 ${h} V24 A13 13 0 0 1 ${w - 9} 24 V${h}`} fill="rgb(4 5 15 / 0.35)" stroke="#9FB2FF" strokeWidth="1.3" />
+      ) : (
+        <>
+          <line x1={w / 2} y1="5" x2={w / 2} y2={h} stroke="#6B83FF" strokeWidth="0.7" opacity="0.6" />
+          <rect x="12" y="16" width={w - 24} height="24" fill="none" stroke="#6B83FF" strokeWidth="0.7" opacity="0.6" />
+        </>
+      )}
+    </svg>
+  );
+};
+
+const KioskRoofFace = () => {
+  const w = KIOSK.roof.side;
+  const h = KIOSK.roofSlant;
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} className="overflow-visible">
+      <path d={`M${w / 2} 0 L${w} ${h} L0 ${h} Z`} fill="rgb(69 96 255 / 0.18)" stroke="#9FB2FF" strokeWidth="1.2" strokeLinejoin="round" />
+      {/* tile courses */}
+      {[0.35, 0.55, 0.75, 0.9].map((f) => (
+        <line key={f} x1={w / 2 - (w / 2) * f} y1={h * f} x2={w / 2 + (w / 2) * f} y2={h * f} stroke="#6B83FF" strokeWidth="0.7" opacity="0.7" />
+      ))}
+    </svg>
+  );
+};
+
+const Kiosk = () => {
+  const { wall, roof, wallApothem, roofApothem, roofSlant, roofTilt } = KIOSK;
+  const faces = Array.from({ length: 8 }, (_, i) => i * 45);
+  const roofTop = wall.top - roof.height;
+  return (
+    <div className="kiosk absolute left-1/2 top-1/2">
+      {faces.map((deg, i) => (
+        <div key={`w${deg}`} className="absolute" style={{ left: -wall.side / 2, top: wall.top, transform: `rotateY(${deg}deg) translateZ(${wallApothem}px)` }}>
+          <KioskWall arched={i % 2 === 0} />
+        </div>
+      ))}
+      {faces.map((deg) => (
+        <div
+          key={`r${deg}`}
+          className="absolute"
+          style={{ left: -roof.side / 2, top: wall.top - roofSlant, transformOrigin: '50% 100%', transform: `rotateY(${deg + 22.5}deg) translateZ(${roofApothem}px) rotateX(${roofTilt}deg)` }}
+        >
+          <KioskRoofFace />
+        </div>
+      ))}
+      {/* floor octagon */}
+      <div
+        className="absolute rounded-full border border-electric-soft/60 bg-electric/15"
+        style={{ width: roofApothem * 2.4, height: roofApothem * 2.4, left: -roofApothem * 1.2, top: wall.top + wall.height - roofApothem * 1.2, transform: 'rotateX(90deg)' }}
+      />
+      {/* cross finial on the roof peak: two crossed planes so it reads from every angle */}
+      {[0, 90].map((deg) => (
+        <svg key={`c${deg}`} viewBox="0 0 12 18" width="12" height="18" className="absolute overflow-visible" style={{ left: -6, top: roofTop - 17, transform: `rotateY(${deg}deg)` }}>
+          <path d="M6 0 V18 M1.5 5 H10.5" stroke="#D4FF1F" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+      ))}
+    </div>
+  );
+};
+
+// Buildings as 3D wireframe boxes. Each box gets a window facade on all four
+// sides (arched on the ground floor unless `arches` is off) and a lit roof slab.
+type BoxSpec = { w: number; h: number; d: number; x: number; y: number; z?: number; cols: number; floors?: number; arches?: boolean };
+
+const Facade = ({ w, h, cols, floors = 2, arches = true }: { w: number; h: number; cols: number; floors?: number; arches?: boolean }) => {
+  const gap = w / cols;
+  const rowH = (h - 6) / floors;
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} className="overflow-visible">
+      <rect x="0.5" y="0.5" width={w - 1} height={h - 1} fill="rgb(30 55 255 / 0.12)" stroke="#6B83FF" strokeWidth="1" />
+      <line x1="0" y1="4" x2={w} y2="4" stroke="#9FB2FF" strokeWidth="0.8" />
+      {Array.from({ length: floors }, (_, f) => f).map((f) =>
+        Array.from({ length: cols }, (_, c) => {
+          const x = c * gap + gap * 0.28;
+          const ww = gap * 0.44;
+          const y = 6 + f * rowH + rowH * 0.2;
+          const wh = rowH * 0.6;
+          return arches && f === floors - 1 ? (
+            <path key={`${f}-${c}`} d={`M${x} ${y + wh} V${y + ww / 2} A${ww / 2} ${ww / 2} 0 0 1 ${x + ww} ${y + ww / 2} V${y + wh}`} fill="none" stroke="#9FB2FF" strokeWidth="0.8" />
+          ) : (
+            <rect key={`${f}-${c}`} x={x} y={y} width={ww} height={wh} fill="rgb(159 178 255 / 0.15)" stroke="#9FB2FF" strokeWidth="0.7" />
+          );
+        })
+      )}
+    </svg>
+  );
+};
+
+const Slab = ({ w, d, x = 0, y, z = 0 }: { w: number; d: number; x?: number; y: number; z?: number }) => (
+  <div className="absolute border border-electric-soft/80 bg-electric/25" style={{ width: w, height: d, left: -w / 2, top: -d / 2, transform: `translate3d(${x}px, ${y}px, ${z}px) rotateX(90deg)` }} />
+);
+
+const Box = ({ w, h, d, x, y, z = 0, cols, floors, arches }: BoxSpec) => {
+  const sideCols = Math.max(1, Math.round((cols * d) / w));
+  const face = (fw: number, fh: number, transform: string, content: React.ReactNode) => (
+    <div className="absolute" style={{ width: fw, height: fh, left: -fw / 2, top: -fh / 2, transform }}>{content}</div>
+  );
+  return (
+    <div className="absolute p3d" style={{ transform: `translate3d(${x}px, ${y}px, ${z}px)` }}>
+      {face(w, h, `translateZ(${d / 2}px)`, <Facade w={w} h={h} cols={cols} floors={floors} arches={arches} />)}
+      {face(w, h, `rotateY(180deg) translateZ(${d / 2}px)`, <Facade w={w} h={h} cols={cols} floors={floors} arches={arches} />)}
+      {face(d, h, `rotateY(90deg) translateZ(${w / 2}px)`, <Facade w={d} h={h} cols={sideCols} floors={floors} arches={arches} />)}
+      {face(d, h, `rotateY(-90deg) translateZ(${w / 2}px)`, <Facade w={d} h={h} cols={sideCols} floors={floors} arches={arches} />)}
+      {face(w, d, `rotateX(90deg) translateZ(${h / 2}px)`, <div className="w-full h-full border border-electric-soft/80 bg-electric/20" />)}
+    </div>
+  );
+};
+
+// Ground level is y = 34; each box's y is its centre.
+const CITY_HALL: BoxSpec[] = [
+  { w: 120, h: 38, d: 30, x: 0, y: 15, cols: 9 },
+  { w: 28, h: 46, d: 40, x: -70, y: 11, cols: 2 },
+  { w: 28, h: 46, d: 40, x: 70, y: 11, cols: 2 },
+  { w: 40, h: 58, d: 42, x: 0, y: 5, cols: 3, floors: 3 },
+  { w: 22, h: 16, d: 22, x: 0, y: -32, cols: 1, floors: 1 }
+];
+
+// Mandaue City Hall: long main hall, end wings, taller centre block, attic with pediment + flag.
+const CityHall = () => (
+  <div className="holo-sway absolute left-1/2 top-1/2">
+    {CITY_HALL.map((b, i) => <Box key={i} {...b} />)}
+    <svg viewBox="0 0 30 34" width="30" height="34" className="absolute overflow-visible" style={{ left: -15, top: -74, transform: 'translateZ(11px)' }}>
+      <path d="M15 0 V22" stroke="#D4FF1F" strokeWidth="1.2" />
+      <path d="M15 1 H24 V6 H15" fill="rgb(212 255 31 / 0.35)" stroke="#D4FF1F" strokeWidth="0.8" />
+      <path d="M1 34 L15 24 L29 34 Z" fill="rgb(69 96 255 / 0.25)" stroke="#9FB2FF" strokeWidth="1" />
+    </svg>
+    <Slab w={190} d={70} y={34} />
+  </div>
+);
+
+// Barangay Paknaan hall: two-storey block, canopy roof between floors, roof slab,
+// domed balcony canopy, outside staircase on the right, and the seal on top.
+const Paknaan = () => (
+  <div className="holo-sway absolute left-1/2 top-1/2">
+    <Box w={96} h={64} d={50} x={0} y={2} cols={3} floors={2} arches={false} />
+    <Slab w={110} d={62} y={2} />
+    <Slab w={106} d={58} y={-31} />
+    {/* domed canopy over the balcony door */}
+    <svg viewBox="0 0 34 14" width="34" height="14" className="absolute overflow-visible" style={{ left: -17, top: -22, transform: 'translateZ(28px)' }}>
+      <path d="M1 14 A16 13 0 0 1 33 14 Z" fill="rgb(69 96 255 / 0.3)" stroke="#9FB2FF" strokeWidth="1" />
+    </svg>
+    {/* outside staircase running up the right wall */}
+    <svg viewBox="0 0 50 34" width="50" height="34" className="absolute overflow-visible" style={{ left: -25, top: 0, transform: 'rotateY(90deg) translateZ(52px)' }}>
+      <path d="M2 34 h6 v-4 h6 v-4 h6 v-4 h6 v-4 h6 v-4 h6 v-4 h6 v-6" fill="none" stroke="#D4FF1F" strokeWidth="1.2" />
+      <path d="M2 26 L44 0" stroke="#9FB2FF" strokeWidth="0.8" />
+    </svg>
+    {/* barangay seal above the roof */}
+    <svg viewBox="0 0 26 26" width="26" height="26" className="absolute overflow-visible" style={{ left: -13, top: -60, transform: 'translateZ(25px)' }}>
+      <circle cx="13" cy="13" r="11.5" fill="rgb(212 255 31 / 0.15)" stroke="#D4FF1F" strokeWidth="1.4" />
+      <circle cx="13" cy="13" r="6.5" fill="none" stroke="#D4FF1F" strokeWidth="0.8" />
+      <path d="M13 9 V17 M9 13 H17" stroke="#D4FF1F" strokeWidth="0.8" />
+    </svg>
+    <Slab w={150} d={80} y={34} />
+  </div>
+);
+
+// One hologram per landmark, projected from a base:
+// pulsing core, orbit ring, scanlines and rising particles.
+const holoParticles = [[18, 0], [30, 1.1], [44, 2.3], [56, 0.6], [68, 1.8], [80, 2.9], [36, 3.2], [62, 0.3]] as const;
+const LANDMARKS = [
+  { label: "Province of Cebu", Model: Kiosk },
+  { label: "Mandaue City", Model: CityHall },
+  { label: "Barangay Paknaan", Model: Paknaan }
+];
+
+const Hologram = ({ landmark, className = "" }: { landmark: typeof LANDMARKS[number], className?: string }) => {
+  const { label, Model } = landmark;
+
+  return (
+    <div className={`relative w-64 h-80 shrink-0 ${className}`} aria-hidden="true">
+      {holoParticles.map(([left, delay], i) => (
+        <span key={i} className="holo-particle" style={{ left: `${left}%`, animationDelay: `${delay}s` }} />
+      ))}
+
+      {/* light beam + projector base */}
+      <div className="holo-beam absolute bottom-7 left-1/2 -translate-x-1/2 w-56 h-52" />
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-40 h-8 rounded-[50%] border-2 border-electric-soft bg-electric/30 shadow-[0_0_30px_rgb(69_96_255/0.8)]" />
+      <div className="absolute bottom-[1.15rem] left-1/2 -translate-x-1/2 w-14 h-3 rounded-[50%] bg-lime/80 blur-[3px]" />
+
+      {/* the projection */}
+      <div className="holo-flicker absolute left-1/2 top-8 -translate-x-1/2 w-48 h-48 drop-shadow-[0_0_10px_rgb(69_96_255/0.9)]">
+        {/* perspective sits on this wrapper because it only reaches direct children */}
+        <div className="absolute inset-0 [perspective:800px]">
+          <Model />
+        </div>
+        <div className="core-pulse absolute left-1/2 top-[58%] -ml-4 -mt-4 w-8 h-8 rounded-full bg-white/80 blur-[10px]" />
+
+        {/* orbit ring: a squashed parent turns the spinning circle into an ellipse */}
+        <div className="absolute -inset-2 top-[40%] bottom-[-30%]" style={{ transform: 'scaleY(0.22)' }}>
+          <div className="orbit absolute inset-0 rounded-full border border-dashed border-mist/60">
+            <span className="absolute -top-1.5 left-1/2 -ml-1.5 w-3 h-3 rounded-full bg-lime shadow-[0_0_10px_#D4FF1F]" />
+          </div>
+        </div>
+
+        <div className="holo-scan absolute -inset-6 mix-blend-screen" />
+      </div>
+
+      <p className="absolute bottom-[-0.75rem] inset-x-0 text-center font-mono text-[9px] uppercase tracking-[0.3em] text-electric-soft">
+        <span className="text-lime">●</span> {label}
+      </p>
+    </div>
+  );
+};
+
+const contactRows = [
+  { Icon: Mail, label: "riel.engana@student.passerellesnumeriques.org", href: "mailto:riel.engana@student.passerellesnumeriques.org" },
+  { Icon: Phone, label: "0985 025 4857", href: "tel:09850254857" },
+  { Icon: Linkedin, label: "in/riel-jake-engana", href: SOCIAL_LINKS[0].href },
+  { Icon: Github, label: "@Jekx-geidi", href: SOCIAL_LINKS[3].href }
+];
+
+const Contact = () => {
+  const field = "w-full bg-void/70 border border-electric-soft/30 px-4 py-3.5 text-white placeholder:text-mist/50 outline-none transition-colors focus:border-lime";
+  const label = "font-mono text-[11px] uppercase tracking-[0.2em] text-mist";
+
+  return (
+    <section id="contact" className="relative scroll-mt-20 py-20 md:py-28 px-5 md:px-10">
+      <div className="max-w-7xl mx-auto">
+        <FadeIn className="cut relative overflow-hidden border border-electric-soft/30 bg-navy">
+          <div className="absolute inset-0 grid-bg opacity-60" aria-hidden="true" />
+          <div className="relative grid lg:grid-cols-[1.1fr_1fr_auto] gap-10 p-7 md:p-10">
+            {/* Heading + location */}
+            <div className="relative">
+              <h2 className="font-display font-black uppercase leading-[0.95] text-5xl md:text-6xl">
+                <span className="text-white">Let's</span><br />
+                <span className="text-lime neon-glow">Connect</span>
+              </h2>
+              <p className="mt-5 max-w-xs font-mono text-xs uppercase leading-relaxed tracking-[0.15em] text-mist">
+                I'm always open to new ideas, collaborations, and exciting projects.
+              </p>
+              <div className="mt-8">
+                <div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.2em] text-mist">
+                  <span className="w-10 h-10 rounded-full border border-electric-soft/50 flex items-center justify-center text-white"><MapPin size={16} /></span>
+                  Based in<br />Paknaan, Mandaue<br />Cebu, PH
+                </div>
+              </div>
+            </div>
+
+            {/* Get in touch */}
+            <div>
+              <h3 className="font-mono font-bold text-sm uppercase tracking-[0.25em] text-lime pb-3 border-b border-lime/40">Get in touch</h3>
+              <ul className="mt-5 space-y-4">
+                {contactRows.map(({ Icon, label: text, href }) => (
+                  <li key={href}>
+                    <a href={href} target={href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" className="group flex items-center gap-4 min-w-0">
+                      <Icon size={18} className="shrink-0 text-electric-soft group-hover:text-lime transition-colors" />
+                      <span className="truncate text-sm text-white/85 group-hover:text-lime transition-colors">{text}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-6 flex gap-2">
+                {SOCIAL_LINKS.map(({ href, label: name, Icon }) => (
+                  <a key={name} href={href} target="_blank" rel="noopener noreferrer" aria-label={name} className="w-10 h-10 border border-electric-soft/40 flex items-center justify-center text-mist hover:text-void hover:bg-lime hover:border-lime transition-colors">
+                    <Icon size={17} />
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            {/* QR */}
+            <div className="w-fit justify-self-center lg:justify-self-auto flex flex-col items-stretch gap-3 self-start">
+              <div className="relative p-4 border-2 border-lime/80">
+                <img src="/qr-portfolio.svg" alt="QR code to profilio-e26e.vercel.app" className="w-32 h-32" />
+              </div>
+              <span className="w-full text-center bg-lime text-void font-mono font-bold text-xs uppercase tracking-[0.25em] py-2">Scan me!</span>
+            </div>
+          </div>
+
+          {/* Holograms, zooming in from province to city to barangay */}
+          <div className="relative grid sm:grid-cols-3 gap-10 sm:gap-4 justify-items-center px-7 md:px-10 pb-12">
+            {LANDMARKS.map((l) => <Hologram key={l.label} landmark={l} />)}
+          </div>
+
+          {/* Form */}
+          <form action="https://formsubmit.co/rieljake.engana.24@usjr.edu.ph" method="POST" className="relative border-t border-electric-soft/25 p-7 md:p-10 grid md:grid-cols-2 gap-5">
+            <input type="hidden" name="_subject" value="You have New Message from your client Jake!" />
+            <input type="hidden" name="_captcha" value="false" />
+            <p className="md:col-span-2 font-mono text-xs uppercase tracking-[0.25em] text-white"><span className="text-lime">&gt;_</span> Send a transmission</p>
+            <div className="space-y-2">
+              <label htmlFor="contact-name" className={label}>Full name</label>
+              <input id="contact-name" type="text" name="name" required placeholder="Name" className={field} />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="contact-email" className={label}>Email</label>
+              <input id="contact-email" type="email" name="email" required placeholder="yourname@email.com" className={field} />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <label htmlFor="contact-message" className={label}>Message</label>
+              <textarea id="contact-message" name="message" required rows={5} placeholder="Write your message..." className={`${field} resize-none`} />
+            </div>
+            <button type="submit" className="cut-sm md:col-span-2 md:justify-self-start inline-flex items-center justify-center gap-3 bg-lime text-void px-8 py-4 font-mono font-bold text-xs uppercase tracking-[0.25em] hover:bg-white transition-colors">
+              <Send size={16} /> Send message
+            </button>
+          </form>
+        </FadeIn>
+      </div>
+    </section>
+  );
+};
+
+// --- Footer ---
+
+const Ticker = () => (
+  <div className="bg-electric overflow-hidden py-3" aria-hidden="true">
+    <div className="marquee-track flex w-max" style={{ '--marquee-duration': '30s' } as React.CSSProperties}>
+      {Array.from({ length: 12 }).map((_, i) => (
+        <span key={i} className="flex items-center gap-6 px-6 font-mono text-xs uppercase tracking-[0.3em] text-white whitespace-nowrap">
+          <Asterisk size={14} /> Let's build the future together
+        </span>
+      ))}
+    </div>
+  </div>
+);
+
+const Footer = () => (
+  <footer>
+    <Ticker />
+    <div className="px-5 md:px-10 py-10 bg-void border-t border-electric-soft/20">
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <BrandMark />
+        <ul className="flex flex-wrap gap-x-6 gap-y-2">
+          {NAV_LINKS.map((l) => (
+            <li key={l.href}><a href={l.href} className="font-mono text-[11px] uppercase tracking-[0.2em] text-mist hover:text-lime transition-colors">{l.label}</a></li>
+          ))}
+        </ul>
+        <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-mist/60">© 2026 Riel Jake Engaña</p>
       </div>
     </div>
   </footer>
 );
 
 export default function PortfolioPage() {
-  const { active: activeSection, last: lastSection, dir: travelDir } = useTrackActiveSection();
-  const travel = useMemo(() => ({ last: lastSection, dir: travelDir }), [lastSection, travelDir]);
-
   useEffect(() => {
     document.documentElement.style.scrollBehavior = 'smooth';
-    document.documentElement.style.colorScheme = 'light';
+    document.documentElement.style.colorScheme = 'dark';
   }, []);
 
   useEffect(() => {
@@ -1754,32 +1688,28 @@ export default function PortfolioPage() {
   }, []);
 
   return (
-    <ActiveSectionContext.Provider value={activeSection}>
-    <TravelContext.Provider value={travel}>
-    <div className="relative min-h-screen overflow-x-clip bg-bg text-ink selection:bg-accent-start selection:text-white">
-      <div className="fixed inset-0 z-0 pointer-events-none bg-linear-to-b from-white to-accent-start/40" />
+    <div className="relative min-h-screen overflow-x-clip bg-void text-white">
+      {/* soft electric glow at the top of the page */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[900px] bg-[radial-gradient(ellipse_at_70%_0%,rgb(30_55_255/0.28),transparent_60%)]" aria-hidden="true" />
       <Navbar />
       <main className="relative z-10">
         <Hero />
-        <ServiceAccordion />
-        <AboutStats />
-        <JourneyTimeline />
-        <Education />
-        <PortfolioIntro />
-        <Portfolio />
+        <Work />
+        <StatsBand />
+        <Services />
+        <Journey />
+        <Experience />
+        <Achievements />
+        <Tools />
         <Reviews />
-        <ToolsSection />
         <FAQ />
         <Contact />
       </main>
       <div className="relative z-10">
         <Footer />
       </div>
-      <KingdomTravel />
-      <BmoChat />
+      <ChatBot />
       <CheckIn />
     </div>
-    </TravelContext.Provider>
-    </ActiveSectionContext.Provider>
   );
 }

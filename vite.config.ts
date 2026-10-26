@@ -5,7 +5,7 @@ import {defineConfig, loadEnv, type Plugin} from 'vite';
 import {handleChat} from './api/chat';
 import {handleWhere} from './api/where';
 
-// Dev only: serve the Vercel function at /api/chat so the BMO chat works under `npm run dev`.
+// Dev only: serve the Vercel function at /api/chat so the Profilio Bot chat works under `npm run dev`.
 const devChatApi = (apiKey: string | undefined): Plugin => ({
   name: 'dev-chat-api',
   configureServer(server) {

@@ -1,409 +1,43 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&family=Caveat:wght@400..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&family=Tektur:wght@400..900&family=JetBrains+Mono:wght@400;500;700&display=swap');
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
-/* The Education section toggles .gunter while current; gunter: restyles its parts in Gunter's palette. */
-@custom-variant gunter (&:where(.gunter, .gunter *));
 
+/* Spy Agency (Iconian Fonts, free for non-commercial use) — hero h1 */
 @font-face {
-  font-family: "Adventure Time Logo";
-  src: url("/fonts/AdventureTimeLogo.ttf") format("truetype");
-  /* Letters + space only: the font maps digits and punctuation (0-9 / , . " ' ! ? & - : + ( ) % #)
-     to EMPTY glyphs, so they rendered blank. Limiting the range makes those fall back to Space Grotesk. */
-  unicode-range: U+0020, U+0041-005A, U+0061-007A;
-  font-weight: normal;
-  font-style: normal;
+  font-family: "Spy Agency";
+  src: url("/fonts/spyagency.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Spy Agency";
+  src: url("/fonts/spyagencybold.ttf") format("truetype");
+  font-weight: 700;
   font-display: swap;
 }
 
 @theme {
+  --font-spy: "Spy Agency", "Tektur", sans-serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Adventure Time Logo", "Space Grotesk", sans-serif;
-  --font-signature: "Caveat", cursive;
-  
-  /* Adventure Time palette. Ink isn't in the palette: none of the five is dark
-     enough for body text, so it's a deep navy taken from the palette blue. */
-  --color-bg: #FFFFFF;
-  --color-ink: #0B2E3F;
-  --color-accent-start: #029AC3; /* Blue */
-  --color-accent-end: #FE66CA;   /* Pink */
-  --color-secondary: #59A694;    /* Teal */
-  --color-highlight: #FFBA1E;    /* Yellow */
-  --color-tertiary: #CD93F9;     /* Lavender */
-  --color-title: #6B1A26;        /* Maroon — headings + primary buttons */
-  --color-jake-skin: #F8B400;    /* Jake's actual fur colour */
-  /* Jake palette, sampled from jake.png — hero */
-  --color-jake-fur: #F9BB00;
-  --color-jake-wood: #DE8234;      /* desk */
-  --color-jake-hoodie: #1F1F24;
-  --color-jake-cream: #FFF6DE;     /* hero background top */
-  --color-jake-ink: #2B1A0A;       /* cocoa — headline text */
-  --color-jake-book-red: #B5352E;  /* the books on his desk */
-  --color-jake-book-blue: #2E4C7C;
-  --color-jake-book-green: #285039;
-  --color-jake: #D39200;         /* Jake yellow, darkened from jake.png (#F8B400) — "AI" + nav hover */
-  --color-sky: #1D65A8;          /* Sky blue, darkened from the BG.webp sky — "Software" in the hero */
+  --font-display: "Tektur", "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
-  /* BMO palette, sampled from idk.png — Services section */
-  --color-bmo: #0AE6BE;          /* body */
-  --color-bmo-shade: #00AA96;    /* body shading / legs */
-  --color-bmo-screen: #FCFAD8;   /* screen */
-  --color-bmo-ink: #170414;      /* line-art outline */
-  --color-bmo-slot: #2F697D;     /* slot + small dark buttons */
-  --color-bmo-yellow: #FDE876;   /* D-pad */
-  --color-bmo-blue: #09E3F9;     /* triangle button */
-  --color-bmo-pink: #FC62A2;     /* big round button */
-
-  /* Finn palette, sampled from Finn.png — About section */
-  --color-finn-shirt: #009EDB;
-  --color-finn-shorts: #0164D3;
-  --color-finn-hat: #F6F6F6;
-  --color-finn-skin: #F4C8B4;
-  --color-finn-pack: #54A722;    /* backpack */
-  --color-finn-mouth: #FB999B;
-  --color-finn-ink: #111111;     /* line-art outline */
-
-  /* Marceline palette, sampled from marceline.png — Journey section */
-  --color-marcy-hair: #0E0C19;
-  --color-marcy-skin: #C3ECEE;
-  --color-marcy-sweater: #5F6672;
-  --color-marcy-red: #B70D1A;
-  --color-marcy-jeans: #262683;
-  --color-marcy-boots: #72152B;
-  --color-marcy-tie: #434DD5;    /* hair tie */
-
-  /* Princess Bubblegum palette, sampled from Princess Bubblegum.png — Portfolio section */
-  --color-pb-pink: #FD59BC;      /* hair + dress */
-  --color-pb-skin: #FDD3F3;
-  --color-pb-lilac: #E889F4;     /* boots */
-  --color-pb-gem: #8CD7FD;       /* crown gem */
-  --color-pb-crown: #F6B822;
-  --color-pb-magenta: #B0307F;   /* deep shade — readable text */
-  --color-pb-ink: #3A0F2E;       /* outline */
-
-  /* Gunter palette, sampled from penguin.png — Education section */
-  --color-gunter-navy: #14202E;       /* body */
-  --color-gunter-belly: #F2F0E2;      /* belly — section background */
-  --color-gunter-gown: #1F1E20;       /* graduation gown */
-  --color-gunter-gold: #FFBD2D;       /* gown trim, beak, tassel */
-  --color-gunter-gold-deep: #B07A00;  /* darker gold for text on cream */
-
-  /* Flame Princess palette, sampled from fire.png — Reviews section */
-  --color-fire-flame: #FC3801;   /* skin / main flame */
-  --color-fire-hair: #FD8303;    /* hair tips */
-  --color-fire-gold: #FFC02E;    /* flame highlight */
-  --color-fire-red: #CA031C;     /* dress trim */
-  --color-fire-ember: #1E0604;   /* charcoal ember — section base */
-  --color-fire-cream: #FFF1DC;   /* text on ember */
-
-  /* Lumpy Space Princess palette, sampled from baloyet.png — FAQ section */
-  --color-lsp-body: #BE98D7;     /* lavender body */
-  --color-lsp-star: #FDE15B;     /* star on her head */
-  --color-lsp-blush: #EAA8D8;
-  --color-lsp-mist: #F3EAFA;     /* pale lavender — section background */
-  --color-lsp-deep: #6B3F8F;     /* deep purple — readable text */
-  --color-lsp-ink: #1E1024;      /* outline */
-
-  /* Ice King palette, sampled from Ice King.png — Contact section */
-  --color-ik-robe: #1E28E6;      /* robe (softened from #0001F6) */
-  --color-ik-navy: #001060;      /* robe shadow — section base */
-  --color-ik-skin: #B8EEFB;      /* ice-blue skin */
-  --color-ik-beard: #FCFCFC;
-  --color-ik-crown: #F5DC0A;     /* gold crown */
-  --color-ik-gem: #D0103A;       /* crown gems */
-
-  /* Lady Rainicorn palette, sampled from rainbow.png — Tools section */
-  --color-rain-red: #F01848;
-  --color-rain-gold: #E8A820;    /* orange stripe (deepened so white icons read on it) */
-  --color-rain-mane: #F0D860;    /* yellow mane */
-  --color-rain-green: #30A848;
-  --color-rain-teal: #00A890;
-  --color-rain-blue: #1860F0;
-  --color-rain-purple: #7860F0;
-  --color-rain-pink: #F0A8F0;    /* body */
-  --color-rain-pink-deep: #D65DC8; /* body, deepened for icon tiles */
-  --color-rain-blush: #FDEBFB;   /* pale pink — section background */
-  --color-rain-ink: #1A1030;     /* outline */
+  /* Neon palette: near-black navy, electric blue, acid lime */
+  --color-void: #04050F;
+  --color-navy: #070B2E;
+  --color-panel: #0A1040;
+  --color-electric: #1E37FF;
+  --color-electric-soft: #4560FF;
+  --color-lime: #D4FF1F;
+  --color-mist: #A9B4E8;
+  --color-ink: #0B2E3F;           /* client logos' light-mode colour (they render light under .dark) */
 }
 
 @layer base {
   body {
-    @apply bg-bg text-ink font-sans antialiased selection:bg-accent-start selection:text-white;
+    @apply bg-void text-white font-sans antialiased selection:bg-lime selection:text-void;
   }
-}
-
-/*
- * Shared card surface. The review cards apply this via Tailwind
- * (bg-white/70 dark:bg-slate-900/60, border-black/5 dark:border-white/10);
- * these vars expose the same values to components that style inline and so
- * can't use the dark: variant — currently the tool tiles in EyeTicker.
- * Built with color-mix on Tailwind's own tokens so the two can't drift.
- */
-:root {
-  --card-surface: color-mix(in oklab, white 70%, transparent);
-  --card-border: color-mix(in oklab, black 5%, transparent);
-}
-
-:root.dark {
-  --card-surface: color-mix(in oklab, var(--color-slate-900) 60%, transparent);
-  --card-border: color-mix(in oklab, white 10%, transparent);
-}
-
-.gradient-text {
-  @apply bg-linear-to-r from-accent-start to-accent-end bg-clip-text text-transparent;
-}
-
-/*
- * Heading lettering: maroon blending down into near-black, with a soft dark
- * edge. The gradient repeats every line (1lh) so multi-line headings get
- * the full fade on each line instead of one fade across the block.
- */
-.title-text {
-  color: var(--color-title);
-  background: linear-gradient(180deg, #8C2233 0%, #6B1A26 45%, #2A0A10 100%) 0 0 / 100% 1lh repeat-y;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 2px 0 rgb(26 6 10 / 0.25));
-}
-
-/* Inside a dark section (class="dark", e.g. Services) the maroon would vanish, so flip to white → soft rose. */
-.dark .title-text {
-  color: #fff;
-  background-image: linear-gradient(180deg, #FFFFFF 0%, #F6E3E6 50%, #D9A3AB 100%);
-  filter: drop-shadow(0 2px 0 rgb(0 0 0 / 0.35));
-}
-
-/* text-fill-color is inherited, so an explicitly coloured child must opt back out. */
-.title-text .text-jake,
-.title-text .text-sky {
-  -webkit-text-fill-color: currentColor;
-}
-
-/* Fur-yellow "Software" on cream: a soft desk-orange offset shadow instead of an outline.
-   (filter, not text-shadow, so it also works with the headline's background-clip reveal) */
-.jake-shadow {
-  filter: drop-shadow(0.045em 0.05em 0 var(--color-jake-wood));
-}
-
-/* Handwriting on the "Read Profile" parchment: Caveat in slightly uneven dark ink. */
-.handwriting {
-  font-family: var(--font-signature);
-  font-weight: 600;
-  color: #24160A;
-  text-shadow: 0 0 0.5px rgb(36 22 10 / 0.6);
-}
-
-/* The "Read Profile" parchment drawn with border-image: the rolled top/bottom and the
-   curled corners keep their shape (slices 250/225/240/225 px of paper.webp) while the
-   plain parchment in the middle stretches, so the scroll can be large at any size. */
-.parchment {
-  /* same scale on all four sides (keeps the curls' shape), sized by width AND height */
-  --pt: clamp(58px, min(10.5vw, 16vh), 150px);
-  --ps: clamp(52px, min(9.4vw, 14.3vh), 134px);
-  --pb: clamp(56px, min(10vw, 15.3vh), 144px);
-  border-style: solid;
-  border-color: transparent;
-  border-width: var(--pt) var(--ps) var(--pb) var(--ps);
-  border-image: url('/paper.webp') 250 225 240 225 fill stretch;
-}
-.pen-tip {
-  display: inline-block;
-  width: 0.5em;
-  height: 0.5em;
-  margin-left: 2px;
-  border-radius: 50% 50% 50% 0;
-  background: var(--color-jake-ink);
-  transform: rotate(-45deg) translateY(-0.1em);
-  animation: pen-bob 0.5s ease-in-out infinite alternate;
-}
-@keyframes pen-bob { from { opacity: 1; } to { opacity: 0.35; } }
-
-/* Cartoon outline in BMO's line-art colour (pink on teal needs it to read). */
-.bmo-outline {
-  -webkit-text-stroke: 0.08em var(--color-bmo-ink);
-  paint-order: stroke fill;
-}
-
-/* Same cartoon outline in Finn's black line-art (hat-white text on shirt blue). */
-.finn-outline {
-  -webkit-text-stroke: 0.06em var(--color-finn-ink);
-  paint-order: stroke fill;
-}
-
-/* Cartoon outline in Bubblegum's plum line-art (pink on pale pink needs it to read). */
-.pb-outline {
-  -webkit-text-stroke: 0.06em var(--color-pb-ink);
-  paint-order: stroke fill;
-}
-
-/* Cartoon outline in LSP's line-art (star yellow on lavender needs it to read). */
-.lsp-outline {
-  -webkit-text-stroke: 0.06em var(--color-lsp-ink);
-  paint-order: stroke fill;
-}
-
-/* Same maroon-to-black as .title-text, as a surface (Download Resume, Enquire). */
-.title-bg {
-  background: linear-gradient(180deg, #8C2233 0%, #6B1A26 45%, #2A0A10 100%);
-}
-
-/*
- * Glitch button — adapted from Uiverse.io by namecho ("slippery-moth-23", MIT).
- * Recoloured to the site palette: face = --glitch-face, offset edge and glitch
- * slivers = --glitch-edge, text-shadow ghosts in Jake gold + sky blue.
- * The ::after layer repeats the label from data-text and is sliced into strips
- * (clip-path) that jump around on hover.
- */
-.glitch-btn,
-.glitch-btn::after {
-  --glitch-face: var(--color-title);
-  --glitch-edge: var(--color-sky);
-  padding: 16px 24px;
-  font-size: 18px;
-  font-weight: 700;
-  background: linear-gradient(45deg, transparent 5%, var(--glitch-face) 5%);
-  border: 0;
-  color: var(--glitch-text, #fff);
-  letter-spacing: 3px;
-  line-height: 1;
-  box-shadow: 6px 0 0 var(--glitch-edge);
-  outline: transparent;
-  position: relative;
-}
-
-.glitch-btn {
-  display: inline-block;
-  text-decoration: none;
-}
-
-.glitch-btn--alt,
-.glitch-btn--alt::after {
-  --glitch-face: var(--color-sky);
-  --glitch-edge: var(--color-title);
-}
-
-/* Jake hero variants: hoodie-black face / fur-yellow face */
-.glitch-btn--jake,
-.glitch-btn--jake::after {
-  --glitch-face: var(--color-jake-hoodie);
-  --glitch-edge: var(--color-jake-wood);
-  --glitch-text: var(--color-jake-fur);
-}
-.glitch-btn--jake-alt,
-.glitch-btn--jake-alt::after {
-  --glitch-face: var(--color-jake-fur);
-  --glitch-edge: var(--color-jake-hoodie);
-  --glitch-text: var(--color-jake-hoodie);
-}
-button.glitch-btn { cursor: pointer; font-family: inherit; }
-
-.glitch-btn::after {
-  --slice-0: inset(50% 50% 50% 50%);
-  --slice-1: inset(80% -6px 0 0);
-  --slice-2: inset(50% -6px 30% 0);
-  --slice-3: inset(10% -6px 85% 0);
-  --slice-4: inset(40% -6px 43% 0);
-  --slice-5: inset(80% -6px 5% 0);
-  content: attr(data-text);
-  display: block;
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(45deg, transparent 3%, var(--glitch-edge) 3%, var(--glitch-edge) 5%, var(--glitch-face) 5%);
-  text-shadow: -3px -3px 0 var(--color-jake), 3px 3px 0 var(--glitch-edge);
-  clip-path: var(--slice-0);
-}
-
-.glitch-btn:hover::after,
-.glitch-btn:focus-visible::after {
-  animation: 1s glitch;
-  animation-timing-function: steps(2, end);
-}
-
-.glitch-btn:focus-visible {
-  outline: 2px solid var(--color-jake);
-  outline-offset: 4px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .glitch-btn:hover::after,
-  .glitch-btn:focus-visible::after {
-    animation: none;
-  }
-}
-
-@keyframes glitch {
-  0%   { clip-path: var(--slice-1); transform: translate(-20px, -10px); }
-  10%  { clip-path: var(--slice-3); transform: translate(10px, 10px); }
-  20%  { clip-path: var(--slice-1); transform: translate(-10px, 10px); }
-  30%  { clip-path: var(--slice-3); transform: translate(0px, 5px); }
-  40%  { clip-path: var(--slice-2); transform: translate(-5px, 0px); }
-  50%  { clip-path: var(--slice-3); transform: translate(5px, 0px); }
-  60%  { clip-path: var(--slice-4); transform: translate(5px, 10px); }
-  70%  { clip-path: var(--slice-2); transform: translate(-10px, 10px); }
-  80%  { clip-path: var(--slice-5); transform: translate(20px, -10px); }
-  90%  { clip-path: var(--slice-1); transform: translate(-10px, 0px); }
-  100% { clip-path: var(--slice-1); transform: translate(0); }
-}
-
-/* Flame lettering for the Reviews heading: gold core -> orange -> red, per line. */
-.flame-text {
-  color: var(--color-fire-hair);
-  background: linear-gradient(180deg, var(--color-fire-gold) 0%, var(--color-fire-hair) 45%, var(--color-fire-flame) 100%) 0 0 / 100% 1lh repeat-y;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 18px rgb(252 56 1 / 0.45));
-}
-
-/* Rainbow lettering for the Tools heading — Lady Rainicorn's stripes, left to right. */
-.rainbow-text {
-  color: var(--color-rain-purple);
-  background: linear-gradient(90deg, var(--color-rain-red), var(--color-rain-gold), var(--color-rain-green), var(--color-rain-teal), var(--color-rain-blue), var(--color-rain-purple), var(--color-rain-pink-deep));
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 2px 0 rgb(26 16 48 / 0.18));
-}
-
-/* Frost lettering for the Contact heading: snow-white beard -> ice-blue skin, per line. */
-.frost-text {
-  color: var(--color-ik-beard);
-  background: linear-gradient(180deg, var(--color-ik-beard) 0%, var(--color-ik-skin) 100%) 0 0 / 100% 1lh repeat-y;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 3px 0 var(--color-ik-navy));
-}
-
-/* Falling snow (Contact backdrop). Each .snowflake sets --dur, --delay, --drift inline. */
-@keyframes snow-fall {
-  0%   { top: -4%; transform: translateX(0); opacity: 0; }
-  10%  { opacity: 0.9; }
-  100% { top: 104%; transform: translateX(var(--drift, 0px)); opacity: 0.2; }
-}
-.snowflake {
-  position: absolute;
-  top: -4%;
-  border-radius: 9999px;
-  background: radial-gradient(circle, #fff 0%, var(--color-ik-skin) 60%, transparent 70%);
-  animation: snow-fall var(--dur, 12s) linear infinite;
-  animation-delay: var(--delay, 0s);
-}
-
-/* Rising embers (Reviews backdrop). Each .ember sets --dur, --delay, --drift inline. */
-@keyframes ember-rise {
-  0%   { transform: translate(0, 0) scale(1); opacity: 0; }
-  10%  { opacity: 0.9; }
-  100% { transform: translate(var(--drift, 0px), -85vh) scale(0.3); opacity: 0; }
-}
-.ember {
-  position: absolute;
-  bottom: -12px;
-  border-radius: 9999px;
-  background: radial-gradient(circle, var(--color-fire-gold) 0%, var(--color-fire-flame) 55%, transparent 70%);
-  animation: ember-rise var(--dur, 9s) linear infinite;
-  animation-delay: var(--delay, 0s);
 }
 
 /* Infinite review marquee: the track holds the list twice and slides by half. */
@@ -427,17 +61,8 @@ button.glitch-btn { cursor: pointer; font-family: inherit; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ember, .snowflake { display: none; }
   .marquee-track { animation: none; }
   .marquee { overflow-x: auto; }
-}
-
-.gradient-bg {
-  @apply bg-linear-to-r from-accent-start to-accent-end;
-}
-
-.glass-card {
-  @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-sm;
 }
 
 .no-scrollbar {
@@ -449,15 +74,131 @@ button.glitch-btn { cursor: pointer; font-family: inherit; }
   display: none;
 }
 
-/* Themed section lands (SectionBackdrop): sweep in from the direction of travel. */
-.kingdom-backdrop {
-  transition:
-    clip-path 1s cubic-bezier(0.65, 0, 0.35, 1),
-    -webkit-clip-path 1s cubic-bezier(0.65, 0, 0.35, 1),
-    opacity 0.8s ease;
-  will-change: clip-path, opacity;
+
+/* ---------- Neon / cyber redesign ---------- */
+
+/* Faint blueprint grid behind sections */
+.grid-bg {
+  background-image:
+    linear-gradient(to right, rgb(69 96 255 / 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(69 96 255 / 0.07) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* Panel with clipped top-left / bottom-right corners */
+.cut {
+  clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
+}
+.cut-sm {
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+}
+
+/* Lime corner brackets on a positioned element */
+.brackets { position: relative; }
+.brackets::before,
+.brackets::after {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-color: var(--color-lime);
+  pointer-events: none;
+  transition: width 0.3s ease, height 0.3s ease;
+}
+.brackets::before { top: -1px; left: -1px; border-top: 2px solid; border-left: 2px solid; }
+.brackets::after { bottom: -1px; right: -1px; border-bottom: 2px solid; border-right: 2px solid; }
+.brackets:hover::before,
+.brackets:hover::after { width: 34px; height: 34px; }
+
+.neon-glow { text-shadow: 0 0 18px rgb(212 255 31 / 0.45); }
+
+/* Rotating circular badge text */
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+.spin-slow { animation: spin-slow 22s linear infinite; }
+
+/* Wireframe cube in the contact section */
+@keyframes cube-turn {
+  from { transform: rotateX(-24deg) rotateY(0deg); }
+  to   { transform: rotateX(-24deg) rotateY(360deg); }
+}
+.cube { transform-style: preserve-3d; animation: cube-turn 16s linear infinite; }
+.cube > span {
+  position: absolute;
+  inset: 0;
+  border: 1.5px solid rgb(69 96 255 / 0.85);
+  background: rgb(30 55 255 / 0.08);
+  box-shadow: inset 0 0 30px rgb(69 96 255 / 0.35), 0 0 18px rgb(69 96 255 / 0.35);
+}
+
+/* Blinking terminal caret */
+@keyframes caret-blink { 50% { opacity: 0; } }
+.caret { display: inline-block; width: 0.55em; height: 1.1em; margin-left: 2px; vertical-align: -0.15em; background: var(--color-lime); animation: caret-blink 1s steps(1) infinite; }
+
+/* Magellan's Cross kiosk hologram: one 3D scene turning slowly */
+@keyframes kiosk-turn {
+  from { transform: rotateX(-14deg) rotateY(0deg); }
+  to   { transform: rotateX(-14deg) rotateY(360deg); }
+}
+.kiosk { transform-style: preserve-3d; animation: kiosk-turn 20s linear infinite; }
+.kiosk > * { transform-style: preserve-3d; backface-visibility: visible; }
+
+/* Building holograms sway so the facade stays readable */
+@keyframes holo-sway {
+  from { transform: rotateX(-12deg) rotateY(-38deg); }
+  to   { transform: rotateX(-12deg) rotateY(38deg); }
+}
+.holo-sway { transform-style: preserve-3d; animation: holo-sway 7s ease-in-out infinite alternate; }
+.holo-sway > *, .p3d { transform-style: preserve-3d; }
+
+/* Hologram (contact section): inner lime cube, beam, scanlines, orbit rings, particles */
+.cube--inner { animation-direction: reverse; animation-duration: 9s; }
+.cube--inner > span {
+  border-color: rgb(212 255 31 / 0.9);
+  background: rgb(212 255 31 / 0.06);
+  box-shadow: inset 0 0 14px rgb(212 255 31 / 0.35), 0 0 10px rgb(212 255 31 / 0.4);
+}
+@keyframes holo-flicker {
+  0%, 91%, 94%, 97%, 100% { opacity: 1; }
+  92% { opacity: 0.5; }
+  95% { opacity: 0.75; }
+}
+.holo-flicker { animation: holo-flicker 5s linear infinite; }
+.holo-beam {
+  clip-path: polygon(40% 100%, 60% 100%, 100% 0, 0 0);
+  background: linear-gradient(to top, rgb(69 96 255 / 0.6), rgb(69 96 255 / 0.12) 65%, transparent);
+  filter: blur(1.5px);
+}
+@keyframes holo-scan { to { background-position: 0 8px; } }
+.holo-scan {
+  background: repeating-linear-gradient(to bottom, rgb(150 170 255 / 0.2) 0 1px, transparent 1px 4px);
+  background-size: 100% 8px;
+  animation: holo-scan 1.2s linear infinite;
+  mask-image: radial-gradient(circle, black 40%, transparent 70%);
+  -webkit-mask-image: radial-gradient(circle, black 40%, transparent 70%);
+}
+@keyframes orbit-spin { to { transform: rotate(360deg); } }
+.orbit { animation: orbit-spin 7s linear infinite; }
+.orbit--rev { animation-direction: reverse; animation-duration: 11s; }
+@keyframes core-pulse { 50% { transform: scale(1.4); opacity: 0.5; } }
+.core-pulse { animation: core-pulse 2.4s ease-in-out infinite; }
+@keyframes holo-rise {
+  0% { transform: translateY(0); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translateY(-190px); opacity: 0; }
+}
+.holo-particle {
+  position: absolute;
+  bottom: 12%;
+  width: 3px;
+  height: 3px;
+  border-radius: 9999px;
+  background: #A9C0FF;
+  box-shadow: 0 0 6px #6B83FF;
+  opacity: 0;
+  animation: holo-rise 3.6s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .kingdom-backdrop { transition: opacity 0.4s ease; }
+  .spin-slow, .cube, .kiosk, .holo-sway, .caret, .holo-flicker, .holo-scan, .orbit, .core-pulse { animation: none; }
+  .holo-particle { display: none; }
 }

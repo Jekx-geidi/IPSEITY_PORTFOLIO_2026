@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { MapPin, X } from 'lucide-react';
 
 // Jake's home-screen bookmark: /?checkin=<LOCATION_SECRET>. Opening it sends the phone's GPS to
-// api/where.ts so BMO can answer "where is Jake now?" down to the barangay. If location access is
+// api/where.ts so the chat bot can answer "where is Jake now?" down to the barangay. If location access is
 // denied, it checks in by IP instead (province only). Visitors without the key never see this.
 
 type Status = { state: 'working' | 'done' | 'failed'; text: string };
@@ -58,8 +58,8 @@ export default function CheckIn() {
         <motion.div
           role="status"
           aria-live="polite"
-          className={`fixed z-[70] top-4 left-1/2 -translate-x-1/2 w-[min(420px,calc(100vw-32px))] flex items-start gap-2.5 rounded-2xl border-[3px] border-bmo-ink px-4 py-3 text-sm font-semibold text-bmo-ink shadow-[4px_4px_0_rgba(23,4,20,0.35)] ${
-            status.state === 'failed' ? 'bg-red-200' : status.state === 'done' ? 'bg-bmo' : 'bg-bmo-screen'
+          className={`fixed z-[70] top-4 left-1/2 -translate-x-1/2 w-[min(420px,calc(100vw-32px))] flex items-start gap-2.5 border px-4 py-3 font-mono text-xs text-white shadow-[0_0_40px_rgb(30_55_255/0.4)] ${
+            status.state === 'failed' ? 'bg-red-950 border-red-400/70' : status.state === 'done' ? 'bg-navy border-lime/70' : 'bg-navy border-electric-soft/50'
           }`}
           initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
