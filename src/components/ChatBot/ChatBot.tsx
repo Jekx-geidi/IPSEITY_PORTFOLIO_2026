@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, animate, useMotionValue } from 'motion/react';
 import { AlertTriangle, ArrowUpRight, SendHorizontal, X } from 'lucide-react';
 import { quickReply } from '../../../api/_bot';
 
@@ -206,6 +206,35 @@ export default function ChatBot() {
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // The launcher is a Messenger-style chat head: drag it anywhere, and on release it
+  // snaps to the nearest side edge. x/y are offsets from its resting spot (bottom-right).
+  const headRef = useRef<HTMLDivElement>(null);
+  const headX = useMotionValue(0);
+  const headY = useMotionValue(0);
+  const dragged = useRef(false);
+  const [side, setSide] = useState<'left' | 'right'>('right');
+
+  const snapHead = () => {
+    const el = headRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const baseLeft = r.left - headX.get();
+    const baseTop = r.top - headY.get();
+    const margin = window.innerWidth - (baseLeft + r.width); // same gap as the resting spot
+    const toLeft = r.left + r.width / 2 < window.innerWidth / 2;
+    const maxTop = window.innerHeight - margin - r.height;
+    const top = Math.min(Math.max(r.top, margin), maxTop);
+    setSide(toLeft ? 'left' : 'right');
+    const spring = { type: 'spring', stiffness: 500, damping: 35 } as const;
+    animate(headX, toLeft ? margin - baseLeft : 0, spring);
+    animate(headY, top - baseTop, spring);
+  };
+
+  useEffect(() => {
+    window.addEventListener('resize', snapHead);
+    return () => window.removeEventListener('resize', snapHead);
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     inputRef.current?.focus();
@@ -333,7 +362,9 @@ export default function ChatBot() {
             key="chat"
             role="dialog"
             aria-label="Chat with Profilio Bot about Jake"
-            className="cut fixed z-[60] right-3 md:right-6 bottom-24 md:bottom-28 w-[min(400px,calc(100vw-24px))] h-[min(600px,calc(100dvh-8.5rem))] flex flex-col bg-navy border border-electric-soft/40 shadow-[0_0_80px_rgb(30_55_255/0.35)] overflow-hidden origin-bottom-right"
+            className={`cut fixed z-[60] bottom-24 md:bottom-28 w-[min(400px,calc(100vw-24px))] h-[min(600px,calc(100dvh-8.5rem))] flex flex-col bg-navy border border-electric-soft/40 shadow-[0_0_80px_rgb(30_55_255/0.35)] overflow-hidden ${
+              side === 'left' ? 'left-3 md:left-6 origin-bottom-left' : 'right-3 md:right-6 origin-bottom-right'
+            }`}
             initial={{ opacity: 0, scale: 0.85, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.85, y: 20 }}
@@ -474,44 +505,58 @@ export default function ChatBot() {
         )}
       </AnimatePresence>
 
-      {/* Speech bubble over the bot's head */}
-      <AnimatePresence>
-        {!open && nudge !== null && (
-          <motion.button
-            key={nudge}
-            type="button"
-            onClick={() => setOpen(true)}
-            className="fixed z-[60] right-3 md:right-6 bottom-[5.75rem] md:bottom-[7.25rem] max-w-[220px] border border-lime/70 bg-navy/95 px-3.5 py-2.5 text-left font-mono text-xs leading-snug text-white shadow-[0_0_24px_rgb(212_255_31/0.25)] origin-bottom-right"
-            initial={{ opacity: 0, scale: 0.6, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.8, y: 6 }}
-            transition={{ type: 'spring', stiffness: 380, damping: 22 }}
-          >
-            <span className="text-lime">&gt; </span>{NUDGES[nudge]}
-            {/* tail pointing down at the bot */}
-            <span aria-hidden="true" className="absolute -bottom-[7px] right-8 md:right-10 w-3 h-3 rotate-45 border-r border-b border-lime/70 bg-navy" />
-          </motion.button>
-        )}
-      </AnimatePresence>
-
-      {/* Floating launcher */}
-      <motion.button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        aria-label={open ? 'Close chat' : 'Chat with Profilio Bot about Jake'}
-        title="Ask Profilio Bot about Jake"
-        className="fixed z-[60] right-2 md:right-5 bottom-2 md:bottom-4 w-20 h-20 md:w-24 md:h-24 drop-shadow-[0_0_16px_rgb(69_96_255/0.85)]"
-        whileHover={{ scale: 1.08 }}
-        whileTap={{ scale: 0.95 }}
+      {/* Floating launcher: a draggable chat head carrying its speech bubble with it */}
+      <motion.div
+        ref={headRef}
+        className="fixed z-[60] right-2 md:right-5 bottom-2 md:bottom-4 w-20 h-20 md:w-24 md:h-24 touch-none cursor-grab active:cursor-grabbing"
+        style={{ x: headX, y: headY }}
+        drag
+        dragMomentum={false}
+        onPointerDown={() => { dragged.current = false; }}
+        onDragStart={() => { dragged.current = true; setNudge(null); }}
+        onDragEnd={snapHead}
       >
-        <img src={moodSrc('idle')} alt="" aria-hidden="true" className="w-full h-full object-contain" draggable={false} />
-        {open && (
-          <span className="absolute top-0 right-0 w-7 h-7 rounded-full bg-lime text-void flex items-center justify-center shadow-[0_0_10px_#D4FF1F]">
-            <X size={16} strokeWidth={3} />
-          </span>
-        )}
-      </motion.button>
+        {/* Speech bubble over the bot's head */}
+        <AnimatePresence>
+          {!open && nudge !== null && (
+            <motion.button
+              key={nudge}
+              type="button"
+              onClick={() => setOpen(true)}
+              className={`absolute bottom-full mb-1 w-max max-w-[220px] border border-lime/70 bg-navy/95 px-3.5 py-2.5 text-left font-mono text-xs leading-snug text-white shadow-[0_0_24px_rgb(212_255_31/0.25)] ${
+                side === 'left' ? 'left-1 origin-bottom-left' : 'right-1 origin-bottom-right'
+              }`}
+              initial={{ opacity: 0, scale: 0.6, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 6 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 22 }}
+            >
+              <span className="text-lime">&gt; </span>{NUDGES[nudge]}
+              {/* tail pointing down at the bot */}
+              <span aria-hidden="true" className={`absolute -bottom-[7px] w-3 h-3 rotate-45 border-r border-b border-lime/70 bg-navy ${side === 'left' ? 'left-8 md:left-10' : 'right-8 md:right-10'}`} />
+            </motion.button>
+          )}
+        </AnimatePresence>
+
+        <motion.button
+          type="button"
+          // A drag ends with a click too; only a plain tap toggles the chat.
+          onClick={() => { if (!dragged.current) setOpen((o) => !o); }}
+          aria-expanded={open}
+          aria-label={open ? 'Close chat' : 'Chat with Profilio Bot about Jake'}
+          title="Ask Profilio Bot about Jake (drag to move)"
+          className="w-full h-full drop-shadow-[0_0_16px_rgb(69_96_255/0.85)] cursor-[inherit]"
+          whileHover={{ scale: 1.08 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <img src={moodSrc('idle')} alt="" aria-hidden="true" className="w-full h-full object-contain pointer-events-none" draggable={false} />
+          {open && (
+            <span className="absolute top-0 right-0 w-7 h-7 rounded-full bg-lime text-void flex items-center justify-center shadow-[0_0_10px_#D4FF1F]">
+              <X size={16} strokeWidth={3} />
+            </span>
+          )}
+        </motion.button>
+      </motion.div>
     </>
   );
 }

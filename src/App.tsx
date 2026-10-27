@@ -961,7 +961,6 @@ const achievements: { badge: string; title: string; org: string; year?: string; 
   { badge: 'NC II', title: 'UI/UX Design and Visual Graphics', org: 'Senior High School OJT', kind: 'Certifications' },
   { badge: 'Workshop', title: 'Layout Grids, Components, Color Psychology & Design Fundamentals', org: 'AMA ACLC College of Mandaue', year: '2023', kind: 'Certifications' },
   { badge: '56 projects', title: 'Completed 56 global projects before finishing Senior High School', org: 'Freelance', kind: 'Recognition' },
-  { badge: 'Designer', title: 'One of the designers of the first Don Macchiatos logo', org: 'Don Macchiatos', year: '2021', kind: 'Recognition' },
   { badge: 'Analyst', title: 'Business Analyst of the capstone project', org: 'USJ-R Capstone', year: '2026', kind: 'Recognition' },
 ];
 const ACH_FILTERS = ['All', 'Awards', 'Certifications', 'Recognition'] as const;

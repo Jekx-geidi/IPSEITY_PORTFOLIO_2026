@@ -104,7 +104,6 @@ Science curriculum, which gave me the academic foundation for a technical and cr
 - **USJ-R Capstone (2026)**: Business Analyst for our capstone project
 - **AMA ACLC College of Mandaue (2023)**: Layout Grids, Components, Color Psychology and Design Fundamentals Workshop
 - **Don Macchiatos (2023)**: Awarded Best Technical Manager (December 2023)
-- **Don Macchiatos (2021)**: One of the designers of the first Don Macchiatos logo
 - **USJ-R CWTS (2025)**: Champion, Poster Making Contest, Dance and Band
 - **USJ-R CWTS Battle of the Beat (2025)**: Champion
 - **Sinulog Photography Contest (2023)**: Champion
