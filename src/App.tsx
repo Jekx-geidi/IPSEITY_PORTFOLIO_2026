@@ -352,7 +352,7 @@ const HeroPhoto = () => {
 
   return (
     <div
-      className="absolute inset-x-0 bottom-0 h-[94%] flex justify-center cursor-pointer select-none"
+      className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full lg:left-auto lg:-right-[18%] lg:translate-x-0 lg:w-[125%] lg:top-0 lg:bottom-auto isolate cursor-pointer select-none"
       role="button"
       tabIndex={0}
       aria-label="Say hello to Jake"
@@ -369,16 +369,25 @@ const HeroPhoto = () => {
       onBlur={() => setWaving(false)}
       onClick={() => { if (pointerType.current !== 'mouse') setWaving(w => !w); pointerType.current = 'mouse'; }}
     >
+      {/* backlight behind the portrait: a wide electric-blue glow with a lime one around the head and shoulders */}
+      <div aria-hidden="true" className="pointer-events-none absolute -z-10 left-[8%] top-[0%] w-[84%] aspect-square rounded-full bg-[radial-gradient(circle,rgb(69_96_255/0.55)_0%,rgb(30_55_255/0.25)_45%,transparent_70%)] blur-2xl" />
+      <div aria-hidden="true" className="pointer-events-none absolute -z-10 left-[26%] top-[6%] w-[58%] aspect-square rounded-full bg-[radial-gradient(circle,rgb(212_255_31/0.55)_0%,rgb(212_255_31/0.2)_40%,transparent_68%)] blur-3xl" />
+      {/* The cutout ends in a flat edge across the arms, so fade the bottom out, glow included.
+          The padding gives the glow room so the mask doesn't clip it to a rectangle. */}
+      <div className="relative -m-20 p-20 [mask-image:linear-gradient(to_bottom,black_calc(100%-15rem),transparent_calc(100%-5rem))]">
+      <div className="[filter:drop-shadow(0_0_2px_rgb(212_255_31/0.65))_drop-shadow(0_0_22px_rgb(212_255_31/0.4))_drop-shadow(0_0_48px_rgb(69_96_255/0.6))]">
       <motion.img
-        src="/riel-grad.webp"
-        alt="Riel Jake Engaña in USJ-R graduation cap and gown"
-        width={900}
-        height={1405}
+        src="/riel-hero.webp"
+        alt="Riel Jake Engaña in a navy blazer and sunglasses"
+        width={1375}
+        height={1339}
         animate={waving ? { y: -10 } : { y: 0 }}
         transition={{ type: 'spring', stiffness: 260, damping: 18 }}
-        className="h-full w-auto object-contain object-bottom [filter:drop-shadow(0_0_1.5px_rgb(200_210_255/0.55))_drop-shadow(0_0_28px_rgb(69_96_255/0.55))]"
+        className="w-full h-auto"
         draggable={false}
       />
+      </div>
+      </div>
       <AnimatePresence>
         {waving && (
           <motion.div
@@ -479,8 +488,8 @@ const Hero = () => {
             </button>
           </div>
 
-          {/* sits in the open space under the buttons */}
-          <SpinBadge className="relative mt-10 md:mt-12 ml-6 w-40 h-40 md:w-56 md:h-56 lg:w-64 lg:h-64" />
+          {/* sits in the open space above the headline, right of the slashes */}
+          <SpinBadge className="absolute hidden sm:block top-0 sm:right-[12%] lg:-top-[2%] lg:right-[20%] sm:w-32 sm:h-32 lg:w-40 lg:h-40" />
         </motion.div>
 
         {/* Right: the portrait, straight on the page background */}
@@ -503,14 +512,10 @@ const Hero = () => {
             <span className="font-mono text-[10px] uppercase tracking-[0.35em] text-white/80 [writing-mode:vertical-rl]">Scroll to discover</span>
           </div>
 
-          {/* backlight, only behind the portrait: a wide blue glow, then a brighter spot behind the head */}
-          <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-[10%] -translate-x-1/2 w-[90%] max-w-[560px] aspect-square rounded-full bg-[radial-gradient(circle,rgb(69_96_255/0.5)_0%,rgb(30_55_255/0.22)_42%,transparent_70%)] blur-2xl" />
-          <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-[8%] -translate-x-1/2 w-[48%] max-w-[300px] aspect-square rounded-full bg-[radial-gradient(circle,rgb(190_205_255/0.38)_0%,rgb(69_96_255/0.18)_45%,transparent_70%)] blur-xl" />
           <HeroPhoto />
 
-          {/* bottom fade + name plate */}
-          <div className="absolute inset-x-0 bottom-0 h-40 bg-linear-to-t from-void via-void/70 to-transparent pointer-events-none" aria-hidden="true" />
-          <div className="absolute left-5 right-5 bottom-5 md:left-auto md:right-6 md:bottom-7 z-10 md:text-right pointer-events-none">
+          {/* name plate, over the photo's faded bottom edge */}
+          <div className="absolute left-5 right-5 bottom-5 md:left-auto md:right-6 md:bottom-7 z-10 md:text-right pointer-events-none [text-shadow:0_2px_10px_rgb(5_8_30/0.95)]">
             <p className="font-mono font-bold uppercase tracking-[0.2em] text-lime text-sm md:text-base flex md:justify-end items-center gap-2">
               Riel Jake Engaña <ChevronsRight size={18} />
             </p>
@@ -677,8 +682,25 @@ const journey = [
   { year: "2023", title: "Graduated at AMA", body: "Afterall, I Graduate at AMA ACLC College of Mandaue as Visual Graphic Design and Animation, but instead of continue to work, I continue my studies;", image: "/CERTS.jpg" },
   { year: "2024", title: "Joined PNPh", body: "I joined PNPh become their student scholar, Taking 2.5yrs of professional training at USJR. While focusing to study Software Development as an Associate of Computer Technology.", image: "/PN.png" },
   { year: "2025", title: "Prepared for the workplace", body: "I sharpened my portfolio, practiced professional communication, and kept delivering freelance and school projects with stronger standards.", image: "/JP.jpg" },
-  { year: "2026", title: "From student to work", body: "Now I am growing as an Software Developer Intern at Geidi IT, building AI automation, agentic workflows, and production-minded tools.", image: "/GEIDI.jpg" }
+  { year: "2026", title: "From student to work", body: "Now I am growing as an Software Developer Intern at Geidi IT, building AI automation, agentic workflows, and production-minded tools.", image: "/GEIDI.jpg", image2: "/GEIDI-2.jpg" }
 ];
+
+// A milestone with a second photo crossfades between the two.
+const MilestonePhoto = ({ images, alt }: { images: string[]; alt: string }) => {
+  const [shown, setShown] = useState(0);
+  useEffect(() => {
+    if (images.length < 2) return;
+    const t = setInterval(() => setShown((s) => (s + 1) % images.length), 4000);
+    return () => clearInterval(t);
+  }, [images]);
+  return (
+    <>
+      {images.map((src, i) => (
+        <img key={src} src={src} alt={i === shown ? alt : ''} aria-hidden={i !== shown} className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${i === shown ? 'opacity-100' : 'opacity-0'}`} />
+      ))}
+    </>
+  );
+};
 
 const education = [
   { years: "2016 – 2021", title: "Junior High School", institution: "Junior High School Science Class", body: "Completed junior high school under the Science curriculum, building the academic foundation before pursuing a technical and creative track in senior high.", link: "https://www.youtube.com/channel/UCSZq2Jfqy8chv6jnsC1E0NA", logo: "/PaknaanNHS-logo.png" },
@@ -723,7 +745,7 @@ const Journey = () => {
             className="brackets grid md:grid-cols-[0.9fr_1.1fr] border border-electric-soft/25 bg-navy/70"
           >
             <div className="relative aspect-[4/3] md:aspect-auto md:min-h-[340px] overflow-hidden bg-void">
-              <img src={item.image} alt={`${item.year}: ${item.title}`} className="absolute inset-0 w-full h-full object-cover" />
+              <MilestonePhoto images={'image2' in item ? [item.image, item.image2] : [item.image]} alt={`${item.year}: ${item.title}`} />
               <div className="absolute inset-0 bg-linear-to-tr from-electric/40 via-transparent to-transparent mix-blend-screen" />
             </div>
             <div className="p-7 md:p-10 flex flex-col justify-center">
